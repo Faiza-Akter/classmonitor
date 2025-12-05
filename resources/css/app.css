@@ -1,4 +1,4 @@
-@import 'tailwindcss';
+@import "tailwindcss";
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
@@ -6,6 +6,18 @@
 @source '../**/*.js';
 
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+
+    --color-brandIndigo: #4F46E5;   /* Primary buttons */
+    --color-brandSlate: #1E293B;    /* Sidebar, headings */
+    --color-brandOffWhite: #F8FAFC; /* Background */
+    --color-brandSky: #38BDF8;      /* Info, progress bars */
+    --color-brandEmerald: #10B981;  /* Success */
+    --color-brandRose: #F43F5E;     /* Errors */
+
+    --radius-3xl: 1.5rem;
+}
+
+body {
+    @apply bg-brandOffWhite font-sans antialiased;
 }
