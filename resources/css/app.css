@@ -3,3 +3,162 @@
 @tailwind utilities;
 
 
+/* Auth panel sliding animation */
+.auth-container {
+    position: relative;
+    overflow: hidden;
+}
+
+.auth-panel {
+    transition: transform 0.35s ease;
+}
+
+.auth-content {
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+/* Default layout (login page) */
+.mode-login .auth-left {
+    transform: translateX(0);
+}
+.mode-login .auth-right {
+    transform: translateX(0);
+}
+
+/* Register layout (final state on register page) */
+.mode-register .auth-left {
+    transform: translateX(100%);
+}
+.mode-register .auth-right {
+    transform: translateX(-100%);
+}
+
+/* Animate from login -> register */
+.mode-login.animating-to-register .auth-left {
+    transform: translateX(100%);
+}
+.mode-login.animating-to-register .auth-right {
+    transform: translateX(-100%);
+}
+
+/* Animate from register -> login */
+.mode-register.animating-to-login .auth-left {
+    transform: translateX(0);
+}
+.mode-register.animating-to-login .auth-right {
+    transform: translateX(0);
+}
+
+/* Fade out the current form content during animation */
+.mode-login.animating-to-register .auth-content,
+.mode-register.animating-to-login .auth-content {
+    opacity: 0;
+    transform: translateY(10px);
+    pointer-events: none;
+}
+
+
+.auth-container {
+    position: relative;
+    overflow: hidden;
+}
+
+/* Panels slide horizontally */
+.auth-panel {
+    transition: transform 0.5s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.mode-login .auth-left {
+    transform: translateX(0);
+}
+.mode-login .auth-right {
+    transform: translateX(0);
+}
+
+.mode-register .auth-left {
+    transform: translateX(100%);
+}
+.mode-register .auth-right {
+    transform: translateX(-100%);
+}
+
+/* Forms cross-fade within the right panel */
+.auth-forms-wrapper {
+    position: relative;
+    min-height: 520px; /* enough space for either form */
+}
+
+.auth-form {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transform: translateY(12px);
+    pointer-events: none;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.auth-form-active {
+    position: relative;
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+.auth-container {
+    position: relative;
+    overflow: hidden;
+}
+
+/* panel slide */
+.auth-panel {
+    transition: transform 0.5s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.mode-login .auth-left {
+    transform: translateX(0);
+}
+.mode-login .auth-right {
+    transform: translateX(0);
+}
+.mode-register .auth-left {
+    transform: translateX(100%);
+}
+.mode-register .auth-right {
+    transform: translateX(-100%);
+}
+
+/* forms cross-fade */
+.auth-forms-wrapper {
+    position: relative;
+    min-height: 520px;
+}
+
+.auth-form {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transform: translateY(12px);
+    pointer-events: none;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.auth-form-active {
+    position: relative;
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+/* Clean spotlight background for auth pages */
+/* Light neutral gray background */
+.auth-bg {
+    background: #f1f3f7; /* soft clean SaaS-style gray */
+}
+
+/* Softer, modern floating shadow */
+.auth-card-shadow {
+    box-shadow:
+        0 14px 35px rgba(0, 0, 0, 0.10),
+        0 6px 12px rgba(0, 0, 0, 0.06);
+}
+
+

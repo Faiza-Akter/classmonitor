@@ -1,3 +1,5 @@
+@props(['mode' => 'login']) {{-- "login" (default) or "register" --}}
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -10,7 +12,7 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 
-<body class="font-sans min-h-screen bg-gray-100 flex items-center justify-center relative px-4">
+<body class="font-sans min-h-screen auth-bg flex items-center justify-center relative px-4">
 
     {{-- GLOBAL FLOATING SHAPES --}}
     <div class="absolute inset-0 overflow-hidden pointer-events-none">
@@ -22,12 +24,15 @@
     </div>
 
     {{-- MAIN AUTH CONTAINER --}}
-    <div class="relative w-full max-w-6xl bg-white/70 backdrop-blur-xl rounded-4xl shadow-strong 
-                overflow-hidden flex flex-col lg:flex-row" style="max-height: 820px;">
+    <div id="authContainer" data-mode="{{ $mode }}" class="auth-container auth-card-shadow relative w-full max-w-6xl 
+            bg-white/80 backdrop-blur-xl rounded-4xl 
+            overflow-hidden flex flex-col lg:flex-row
+            {{ $mode === 'register' ? 'mode-register' : 'mode-login' }}" style="max-height: 870px;">
+
 
         {{-- LEFT PANEL --}}
-        <section class="lg:w-1/2 bg-gradient-primary text-white px-12 py-20 flex flex-col 
-                        items-center justify-center text-center relative">
+        <section class="auth-panel auth-left lg:w-1/2 bg-blue-600 text-white px-12 py-20 flex flex-col 
+                   items-center justify-center text-center relative">
 
             {{-- Glow Overlays --}}
             <div class="absolute inset-0 opacity-40 pointer-events-none">
@@ -60,7 +65,6 @@
 
                 {{-- FEATURE CARDS --}}
                 <div class="w-full max-w-lg flex justify-between space-x-5 mt-2 mb-6 animate-slide-up delay-150">
-
                     <div class="bg-white/15 backdrop-blur-sm border border-white/20 rounded-3xl 
                                 px-5 py-4 w-1/2 flex space-x-4 shadow-lg hover:scale-[1.03] 
                                 transition-all duration-300">
@@ -84,7 +88,6 @@
                             <p class="text-[13px] text-white/80">Instant scoring</p>
                         </div>
                     </div>
-
                 </div>
 
                 {{-- Testimonial --}}
@@ -108,17 +111,11 @@
             </div>
         </section>
 
-        {{-- RIGHT PANEL (Yellow glow removed) --}}
-        <section class="lg:w-1/2 flex items-center justify-center px-16 py-16 relative overflow-hidden">
+        {{-- RIGHT PANEL --}}
+        <section
+            class="auth-panel auth-right lg:w-1/2 flex items-center justify-center px-16 py-16 relative overflow-hidden">
 
-            {{-- Subtle geometric pattern --}}
-            <div class="absolute inset-0 opacity-[0.08] bg-[radial-gradient(circle_at_1px_1px,black_1px,transparent_0)] 
-                        bg-[size:22px_22px]"></div>
-
-            {{-- Removed Yellow Glow Shape --}}
-
-            {{-- Login Content --}}
-            <div class="relative z-10 w-full max-w-sm animate-fade-in">
+            <div class="relative z-10 w-full max-w-sm auth-forms-wrapper">
                 {{ $slot }}
             </div>
 
@@ -126,6 +123,66 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js" defer></script>
+
+    {{-- PANEL + FORM MODE JS --}}
+    {{-- PANEL + FORM MODE JS --}}
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const container = document.getElementById('authContainer');
+            const loginForm = document.getElementById('loginForm');
+            const registerForm = document.getElementById('registerForm');
+            const forgotForm = document.getElementById('forgotForm'); // may or may not exist
+
+            if (!container) return;
+
+            // track which panel position is active (for sliding left/right)
+            let panelMode = (container.dataset.mode === 'register') ? 'register' : 'login';
+
+            const applyPanelMode = () => {
+                container.classList.toggle('mode-login', panelMode === 'login');
+                container.classList.toggle('mode-register', panelMode === 'register');
+            };
+
+            const setMode = (mode) => {
+                // for login/register we also move the big panels
+                if (mode === 'login' || mode === 'register') {
+                    panelMode = mode;
+                    applyPanelMode();
+                }
+
+                // show/hide individual forms
+                if (loginForm) {
+                    loginForm.classList.toggle('auth-form-active', mode === 'login');
+                }
+                if (registerForm) {
+                    registerForm.classList.toggle('auth-form-active', mode === 'register');
+                }
+                if (forgotForm) {
+                    forgotForm.classList.toggle('auth-form-active', mode === 'forgot');
+                }
+
+                container.dataset.mode = mode;
+            };
+
+            // initial state
+            applyPanelMode();
+            const initialMode = container.dataset.mode || 'login';
+            setMode(initialMode);
+
+            // links with data-auth-toggle
+            document.querySelectorAll('[data-auth-toggle]').forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const target = link.getAttribute('data-auth-toggle');
+
+                    if (target === 'to-register') setMode('register');
+                    if (target === 'to-login') setMode('login');
+                    if (target === 'to-forgot') setMode('forgot'); // no panel slide, just form swap
+                });
+            });
+        });
+    </script>
+
 
 </body>
 
