@@ -90,7 +90,7 @@
                     <section class="hidden lg:block h-[460px]"></section>
 
                     {{-- RIGHT: text + buttons + 2 features --}}
-                    <section class="w-full lg:col-start-2">
+                    <section class="w-full lg:col-start-2 lg:-translate-x-6 transition-transform duration-300">
                         <div class="w-full max-w-2xl">
 
                             <h1
