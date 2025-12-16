@@ -53,11 +53,11 @@ class AttendanceController extends Controller
         }
 
         AttendanceSession::create([
-            'teacher_id'    => $teacher->id,
-            'session_code'  => $code,
-            'starts_at'     => now(),
-            'expires_at'    => now()->addMinutes((int) $request->expires_minutes),
-            'ended_at'      => null,
+            'teacher_id' => $teacher->id,
+            'session_code' => $code,
+            'starts_at' => now(),
+            'expires_at' => now()->addMinutes((int) $request->expires_minutes),
+            'ended_at' => null,
         ]);
 
         return redirect()
@@ -145,14 +145,14 @@ class AttendanceController extends Controller
             ->latest('marked_at')
             ->take(8)
             ->get()
-            ->map(fn ($r) => [
-                'name'  => $r->student?->name ?? 'Student',
+            ->map(fn($r) => [
+                'name' => $r->student?->name ?? 'Student',
                 'email' => $r->student?->email ?? '',
-                'time'  => $r->marked_at?->format('h:i A') ?? '',
+                'time' => $r->marked_at?->format('h:i A') ?? '',
             ]);
 
         return response()->json([
-            'count'  => $count,
+            'count' => $count,
             'latest' => $latest,
         ]);
     }
@@ -191,33 +191,45 @@ class AttendanceController extends Controller
             ->latest('id')
             ->get();
 
-        $filename = 'attendance_sessions_' . now()->format('Y_m_d_His') . '.csv';
+        // Use Bangladesh time for filename too
+        $filename = 'attendance_sessions_' . now('Asia/Dhaka')->format('Y_m_d_His') . '.csv';
 
         return response()->streamDownload(function () use ($sessions) {
             $out = fopen('php://output', 'w');
 
+            // ✅ Excel-friendly UTF-8 BOM
+            fwrite($out, "\xEF\xBB\xBF");
+
             // CSV Header
             fputcsv($out, [
                 'Session Code',
-                'Starts At',
-                'Expires At',
-                'Ended At',
+                'Starts At (BDT)',
+                'Expires At (BDT)',
+                'Ended At (BDT)',
                 'Total Check-ins',
             ]);
 
             foreach ($sessions as $s) {
+                $starts = optional($s->starts_at)?->timezone('Asia/Dhaka')->format('Y-m-d H:i');
+                $expires = optional($s->expires_at)?->timezone('Asia/Dhaka')->format('Y-m-d H:i');
+                $ended = $s->ended_at
+                    ? $s->ended_at->timezone('Asia/Dhaka')->format('Y-m-d H:i')
+                    : 'Active';
+
                 fputcsv($out, [
                     $s->session_code,
-                    optional($s->starts_at)->format('Y-m-d h:i A'),
-                    optional($s->expires_at)->format('Y-m-d h:i A'),
-                    $s->ended_at ? $s->ended_at->format('Y-m-d h:i A') : 'Active/Running',
-                    $s->records_count ?? 0,
+                    $starts ?? '',
+                    $expires ?? '',
+                    $ended,
+                    (int) ($s->records_count ?? 0),
                 ]);
             }
 
             fclose($out);
         }, $filename, [
-            'Content-Type' => 'text/csv',
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Cache-Control' => 'no-store, no-cache',
         ]);
     }
+
 }

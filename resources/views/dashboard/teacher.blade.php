@@ -121,17 +121,19 @@
                     <p class="mt-2 text-xs text-slate-500">Attendance + quiz summaries</p>
 
                     <div class="mt-4 flex flex-wrap gap-2">
-                        <button type="button"
-                                class="px-3 py-2 rounded-xl font-semibold text-white shadow-sm hover:shadow-md transition"
-                                style="background:{{ $cmBlue }};">
+                        {{-- ✅ REAL ROUTE: CSV download --}}
+                        <a href="{{ route('attendance.export.csv') }}"
+                           class="px-3 py-2 rounded-xl font-semibold text-white shadow-sm hover:shadow-md transition"
+                           style="background:{{ $cmBlue }};">
                             Export CSV
-                        </button>
+                        </a>
 
-                        <button type="button"
-                                class="px-3 py-2 rounded-xl font-semibold border border-slate-200 bg-white
-                                       text-slate-900 shadow-sm hover:shadow-md transition">
+                        {{-- ✅ History = open attendance page (it already shows recent sessions) --}}
+                        <a href="{{ route('attendance.index') }}"
+                           class="px-3 py-2 rounded-xl font-semibold border border-slate-200 bg-white
+                                  text-slate-900 shadow-sm hover:shadow-md transition">
                             History
-                        </button>
+                        </a>
                     </div>
                 </div>
             </div>
@@ -159,6 +161,7 @@
                                 </button>
                             </form>
 
+                            {{-- ✅ REAL ROUTE --}}
                             <a href="{{ route('attendance.index') }}"
                                class="px-4 py-2 rounded-xl font-semibold border border-slate-200 bg-white
                                       text-slate-900 shadow-sm hover:shadow-md transition">
@@ -206,11 +209,13 @@
                         @if($activeAttendance)
                             <div class="mt-4">
                                 <div class="flex flex-wrap gap-2">
+                                    {{-- ✅ REAL ROUTE --}}
                                     <a href="{{ route('attendance.index') }}"
                                        class="px-4 py-2 rounded-xl font-semibold border border-slate-200 bg-white text-slate-900 shadow-sm hover:shadow-md transition">
-                                        View Live List
+                                        View Sessions
                                     </a>
 
+                                    {{-- ✅ REAL BACKEND: end session --}}
                                     <form method="POST" action="{{ route('attendance.sessions.end', $activeAttendance) }}">
                                         @csrf
                                         <button type="submit"
@@ -249,9 +254,11 @@
                                 Open
                             </a>
 
+                            {{-- Placeholder until quiz results route exists --}}
                             <button type="button"
                                     class="px-4 py-2 rounded-xl font-semibold border border-slate-200 bg-white
-                                           text-slate-900 shadow-sm hover:shadow-md transition">
+                                           text-slate-900 shadow-sm hover:shadow-md transition"
+                                    onclick="alert('Quiz results will be added in the next step (Quiz backend).')">
                                 Results
                             </button>
                         </div>
