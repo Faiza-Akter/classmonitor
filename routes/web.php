@@ -68,6 +68,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware('student')
         ->name('student.attendance.history');
 
+    Route::get('/attendance/export/csv', [AttendanceController::class, 'exportCsv'])
+        ->middleware('teacher')
+        ->name('attendance.export.csv');
+
+
 });
 
 require __DIR__ . '/auth.php';
