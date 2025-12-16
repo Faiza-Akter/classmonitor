@@ -5,11 +5,14 @@ namespace App\Http\Controllers;
 use App\Models\AttendanceSession;
 use App\Models\AttendanceRecord;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 
 class AttendanceController extends Controller
 {
-    // Teacher page
+    /**
+     * Teacher page: attendance sessions index
+     */
     public function index(Request $request)
     {
         $teacher = $request->user();
@@ -27,7 +30,9 @@ class AttendanceController extends Controller
         return view('attendance.index', compact('activeSession', 'recentSessions'));
     }
 
-    // Teacher creates a new session (anti-proxy: expires in N minutes)
+    /**
+     * Teacher creates a new session (anti-proxy: expires in N minutes)
+     */
     public function create(Request $request)
     {
         $request->validate([
@@ -36,28 +41,33 @@ class AttendanceController extends Controller
 
         $teacher = $request->user();
 
-        // end previous active session (optional but clean)
+        // End previous active sessions (clean)
         AttendanceSession::where('teacher_id', $teacher->id)
             ->active()
             ->update(['ended_at' => now()]);
 
+        // Generate unique session code
         $code = strtoupper(Str::random(6));
-
-        // ensure unique (rare collision)
         while (AttendanceSession::where('session_code', $code)->exists()) {
             $code = strtoupper(Str::random(6));
         }
 
         AttendanceSession::create([
-            'teacher_id' => $teacher->id,
-            'session_code' => $code,
-            'starts_at' => now(),
-            'expires_at' => now()->addMinutes((int) $request->expires_minutes),
+            'teacher_id'    => $teacher->id,
+            'session_code'  => $code,
+            'starts_at'     => now(),
+            'expires_at'    => now()->addMinutes((int) $request->expires_minutes),
+            'ended_at'      => null,
         ]);
 
-        return redirect()->route('attendance.index')->with('success', 'Attendance session created.');
+        return redirect()
+            ->route('attendance.index')
+            ->with('success', 'Attendance session created.');
     }
 
+    /**
+     * Teacher ends a session
+     */
     public function end(Request $request, AttendanceSession $session)
     {
         $teacher = $request->user();
@@ -66,15 +76,22 @@ class AttendanceController extends Controller
 
         $session->update(['ended_at' => now()]);
 
-        return redirect()->route('attendance.index')->with('success', 'Session ended.');
+        return redirect()
+            ->route('attendance.index')
+            ->with('success', 'Session ended.');
     }
 
-    // Student join by code
+    /**
+     * Student join form
+     */
     public function joinForm()
     {
         return view('attendance.join');
     }
 
+    /**
+     * Student join by code and mark attendance
+     */
     public function join(Request $request)
     {
         $request->validate([
@@ -108,10 +125,14 @@ class AttendanceController extends Controller
             ]
         );
 
-        return redirect()->route('student.dashboard')->with('success', 'Attendance marked!');
+        return redirect()
+            ->route('student.dashboard')
+            ->with('success', 'Attendance marked!');
     }
 
-    // Teacher live endpoint (polling)
+    /**
+     * Teacher live endpoint (polling)
+     */
     public function live(Request $request, AttendanceSession $session)
     {
         $teacher = $request->user();
@@ -124,15 +145,79 @@ class AttendanceController extends Controller
             ->latest('marked_at')
             ->take(8)
             ->get()
-            ->map(fn($r) => [
-                'name' => $r->student?->name ?? 'Student',
+            ->map(fn ($r) => [
+                'name'  => $r->student?->name ?? 'Student',
                 'email' => $r->student?->email ?? '',
-                'time' => $r->marked_at?->format('h:i A') ?? '',
+                'time'  => $r->marked_at?->format('h:i A') ?? '',
             ]);
 
         return response()->json([
-            'count' => $count,
+            'count'  => $count,
             'latest' => $latest,
+        ]);
+    }
+
+    /**
+     * ✅ Student Attendance History
+     * URL: /student/attendance
+     */
+    public function studentHistory(Request $request)
+    {
+        $student = $request->user();
+
+        $rows = AttendanceRecord::query()
+            ->where('student_id', $student->id)
+            ->with([
+                'session:id,teacher_id,session_code,starts_at,expires_at,ended_at,created_at',
+                'session.teacher:id,name'
+            ])
+            ->latest('marked_at')
+            ->paginate(10);
+
+        return view('attendance.student_history', compact('rows'));
+    }
+
+    /**
+     * ✅ Teacher Export Attendance Sessions CSV
+     * URL: /attendance/export/csv
+     */
+    public function exportCsv(Request $request)
+    {
+        $teacher = $request->user();
+
+        $sessions = AttendanceSession::query()
+            ->where('teacher_id', $teacher->id)
+            ->withCount('records')
+            ->latest('id')
+            ->get();
+
+        $filename = 'attendance_sessions_' . now()->format('Y_m_d_His') . '.csv';
+
+        return response()->streamDownload(function () use ($sessions) {
+            $out = fopen('php://output', 'w');
+
+            // CSV Header
+            fputcsv($out, [
+                'Session Code',
+                'Starts At',
+                'Expires At',
+                'Ended At',
+                'Total Check-ins',
+            ]);
+
+            foreach ($sessions as $s) {
+                fputcsv($out, [
+                    $s->session_code,
+                    optional($s->starts_at)->format('Y-m-d h:i A'),
+                    optional($s->expires_at)->format('Y-m-d h:i A'),
+                    $s->ended_at ? $s->ended_at->format('Y-m-d h:i A') : 'Active/Running',
+                    $s->records_count ?? 0,
+                ]);
+            }
+
+            fclose($out);
+        }, $filename, [
+            'Content-Type' => 'text/csv',
         ]);
     }
 }
