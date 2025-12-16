@@ -3,6 +3,7 @@
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TeacherDashboardController;
 use App\Http\Controllers\AttendanceController;
+use App\Http\Controllers\QuizController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -71,6 +72,26 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/attendance/export/csv', [AttendanceController::class, 'exportCsv'])
         ->middleware('teacher')
         ->name('attendance.export.csv');
+
+    // Teacher Quiz
+    Route::middleware('teacher')->group(function () {
+        Route::get('/quizzes', [QuizController::class, 'teacherIndex'])->name('quizzes.index');
+        Route::get('/quizzes/create', [QuizController::class, 'teacherCreate'])->name('quizzes.create');
+        Route::post('/quizzes', [QuizController::class, 'teacherStore'])->name('quizzes.store');
+
+        Route::get('/quizzes/{quiz}/manage', [QuizController::class, 'teacherManage'])->name('quizzes.manage');
+        Route::post('/quizzes/{quiz}/questions', [QuizController::class, 'teacherAddQuestion'])->name('quizzes.questions.add');
+
+        Route::post('/quizzes/{quiz}/start', [QuizController::class, 'teacherStart'])->name('quizzes.start');
+        Route::post('/quizzes/{quiz}/stop', [QuizController::class, 'teacherStop'])->name('quizzes.stop');
+    });
+
+    // Student Quiz
+    Route::middleware('student')->group(function () {
+        Route::get('/quizzes/{quiz}/play', [QuizController::class, 'studentPlay'])->name('quizzes.play');
+        Route::post('/quizzes/{quiz}/submit', [QuizController::class, 'studentSubmit'])->name('quizzes.submit');
+        Route::get('/quizzes/{quiz}/result', [QuizController::class, 'studentResult'])->name('quizzes.result');
+    });
 
 
 });
