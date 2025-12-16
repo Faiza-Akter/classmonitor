@@ -10,11 +10,15 @@
     $cmGreen  = '#8BDE63';
     $cmYellow = '#EDB70A';
 
-    // Safe defaults (wire later)
+    // Values come from TeacherDashboardController
     $todayCheckins   = $todayCheckins ?? 0;
     $todaySessions   = $todaySessions ?? 0;
     $avgScore        = $avgScore ?? null;
     $pendingReviews  = $pendingReviews ?? 0;
+
+    // Attendance variables from controller
+    $activeAttendance = $activeAttendance ?? null;
+    $liveCheckins     = $liveCheckins ?? 0;
 @endphp
 
 <div class="relative min-h-[calc(100vh-88px)] overflow-hidden bg-white text-slate-900">
@@ -45,7 +49,7 @@
                 </div>
 
                 <div class="flex flex-wrap gap-2">
-                    <a href="{{ url('/attendance') }}"
+                    <a href="{{ route('attendance.index') }}"
                        class="inline-flex items-center gap-2 px-4 py-2 rounded-xl font-semibold border border-slate-200 bg-white
                               shadow-sm hover:shadow-md transition">
                         <span class="inline-block w-2.5 h-2.5 rounded-full" style="background:{{ $cmGreen }};"></span>
@@ -144,13 +148,18 @@
                         </div>
 
                         <div class="flex flex-wrap gap-2">
-                            <button type="button"
-                                    class="px-4 py-2 rounded-xl font-semibold shadow-sm hover:shadow-md transition"
-                                    style="background:{{ $cmGreen }}; color:#0B1B0F;">
-                                + New Session
-                            </button>
+                            {{-- ✅ REAL BACKEND: create session --}}
+                            <form method="POST" action="{{ route('attendance.sessions.create') }}">
+                                @csrf
+                                <input type="hidden" name="expires_minutes" value="10">
+                                <button type="submit"
+                                        class="px-4 py-2 rounded-xl font-semibold shadow-sm hover:shadow-md transition"
+                                        style="background:{{ $cmGreen }}; color:#0B1B0F;">
+                                    + New Session
+                                </button>
+                            </form>
 
-                            <a href="{{ url('/attendance') }}"
+                            <a href="{{ route('attendance.index') }}"
                                class="px-4 py-2 rounded-xl font-semibold border border-slate-200 bg-white
                                       text-slate-900 shadow-sm hover:shadow-md transition">
                                 Open
@@ -167,15 +176,23 @@
                                 <p class="mt-2 text-2xl font-extrabold tracking-[0.25em] text-slate-900">
                                     {{ $activeAttendance?->session_code ?? '— — — —' }}
                                 </p>
-                                <p class="mt-2 text-sm text-slate-600">
-                                    Share code or show QR from Attendance page.
-                                </p>
+
+                                @if($activeAttendance?->expires_at)
+                                    <p class="mt-2 text-sm text-slate-600">
+                                        Expires at:
+                                        <span class="font-semibold">{{ $activeAttendance->expires_at->format('h:i A') }}</span>
+                                    </p>
+                                @else
+                                    <p class="mt-2 text-sm text-slate-600">
+                                        Create a session to generate a code.
+                                    </p>
+                                @endif
                             </div>
 
                             <div class="flex items-center gap-3">
                                 <div class="px-4 py-3 rounded-2xl border border-slate-200 bg-white">
                                     <p class="text-xs font-bold text-slate-500">Live Check-ins</p>
-                                    <p class="mt-1 text-xl font-extrabold text-slate-900">
+                                    <p class="mt-1 text-xl font-extrabold text-slate-900" id="liveCheckins">
                                         {{ $liveCheckins ?? 0 }}
                                     </p>
                                 </div>
@@ -185,6 +202,25 @@
                                 </div>
                             </div>
                         </div>
+
+                        @if($activeAttendance)
+                            <div class="mt-4">
+                                <div class="flex flex-wrap gap-2">
+                                    <a href="{{ route('attendance.index') }}"
+                                       class="px-4 py-2 rounded-xl font-semibold border border-slate-200 bg-white text-slate-900 shadow-sm hover:shadow-md transition">
+                                        View Live List
+                                    </a>
+
+                                    <form method="POST" action="{{ route('attendance.sessions.end', $activeAttendance) }}">
+                                        @csrf
+                                        <button type="submit"
+                                                class="px-4 py-2 rounded-xl font-semibold border border-slate-200 bg-white text-slate-900 shadow-sm hover:shadow-md transition">
+                                            End Session
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        @endif
                     </div>
                 </div>
 
@@ -234,4 +270,22 @@
         </div>
     </div>
 </div>
+
+{{-- ✅ Optional: live polling for dashboard count --}}
+@if($activeAttendance)
+<script>
+    const liveUrl = @json(route('attendance.sessions.live', $activeAttendance));
+
+    async function pollLiveCount(){
+        try{
+            const res = await fetch(liveUrl, { headers: { "Accept": "application/json" }});
+            const data = await res.json();
+            const el = document.getElementById('liveCheckins');
+            if(el) el.textContent = data.count ?? 0;
+        }catch(e){}
+    }
+    pollLiveCount();
+    setInterval(pollLiveCount, 4000);
+</script>
+@endif
 @endsection
