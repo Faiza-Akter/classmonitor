@@ -268,4 +268,78 @@ class QuizController extends Controller
 
         return view('quizzes.result', compact('quiz', 'attempt'));
     }
+
+    public function teacherEditQuestion(Request $request, Quiz $quiz, Question $question)
+    {
+        $teacher = $request->user();
+
+        abort_unless($quiz->teacher_id === $teacher->id, 403);
+        abort_unless($question->quiz_id === $quiz->id, 404);
+
+        $question->load('options');
+
+        return view('quizzes.edit_question', compact('quiz', 'question'));
+    }
+
+    public function teacherUpdateQuestion(Request $request, Quiz $quiz, Question $question)
+    {
+        $teacher = $request->user();
+
+        abort_unless($quiz->teacher_id === $teacher->id, 403);
+        abort_unless($question->quiz_id === $quiz->id, 404);
+
+        $validated = $request->validate([
+            'type' => ['required', 'in:mcq,tf,short'],
+            'text' => ['required', 'string', 'max:2000'],
+            'points' => ['nullable', 'integer', 'min:1', 'max:100'],
+
+            // options for mcq/tf only
+            'options' => ['array'],
+            'options.*' => ['nullable', 'string', 'max:255'],
+            'correct_index' => ['nullable', 'integer', 'min:0', 'max:10'],
+        ]);
+
+        $question->update([
+            'type' => $validated['type'],
+            'text' => $validated['text'],
+            'points' => $validated['points'] ?? 1,
+        ]);
+
+        // For MCQ/TF, replace options
+        if (in_array($validated['type'], ['mcq', 'tf'])) {
+            $options = collect($validated['options'] ?? [])
+                ->map(fn($v) => trim((string) $v))
+                ->filter(fn($v) => $v !== '')
+                ->values();
+
+            // enforce TF standard options
+            if ($validated['type'] === 'tf') {
+                $options = collect(['True', 'False']);
+            }
+
+            if ($options->count() < 2) {
+                return back()->withErrors(['options' => 'At least 2 options are required.'])->withInput();
+            }
+
+            $correctIndex = $validated['correct_index'] ?? 0;
+            if ($correctIndex < 0 || $correctIndex >= $options->count()) {
+                $correctIndex = 0;
+            }
+
+            // delete old options, insert new options
+            $question->options()->delete();
+
+            foreach ($options as $i => $optText) {
+                $question->options()->create([
+                    'text' => $optText,
+                    'is_correct' => ($i === $correctIndex),
+                ]);
+            }
+        } else {
+            // short answer: remove mcq options
+            $question->options()->delete();
+        }
+
+        return redirect()->route('quizzes.manage', $quiz)->with('success', 'Question updated successfully.');
+    }
 }

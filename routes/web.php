@@ -13,7 +13,8 @@ Route::get('/', function () {
 Route::get('/dashboard', function () {
     $user = request()->user();
 
-    if (!$user) return redirect()->route('login');
+    if (!$user)
+        return redirect()->route('login');
 
     return $user->role === 'teacher'
         ? redirect()->route('teacher.dashboard')
@@ -87,6 +88,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/quizzes/{quiz}/submit', [QuizController::class, 'studentSubmit'])->name('quizzes.submit');
         Route::get('/quizzes/{quiz}/result', [QuizController::class, 'studentResult'])->name('quizzes.result');
     });
+
+    // Edit question
+    Route::get('/quizzes/{quiz}/questions/{question}/edit', [QuizController::class, 'teacherEditQuestion'])
+        ->name('quizzes.questions.edit');
+
+    // Update question
+    Route::patch('/quizzes/{quiz}/questions/{question}', [QuizController::class, 'teacherUpdateQuestion'])
+        ->name('quizzes.questions.update');
+
 
 });
 
