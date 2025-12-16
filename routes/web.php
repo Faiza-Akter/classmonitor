@@ -12,7 +12,8 @@ Route::get('/', function () {
 Route::get('/dashboard', function () {
     $user = request()->user();
 
-    if (!$user) return redirect()->route('login');
+    if (!$user)
+        return redirect()->route('login');
 
     return $user->role === 'teacher'
         ? redirect()->route('teacher.dashboard')
@@ -61,6 +62,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    // Student Attendance History
+    Route::get('/student/attendance', [AttendanceController::class, 'studentHistory'])
+        ->middleware('student')
+        ->name('student.attendance.history');
+
 });
 
 require __DIR__ . '/auth.php';
