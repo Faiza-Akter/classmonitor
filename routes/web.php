@@ -68,6 +68,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::get('/student/attendance', [AttendanceController::class, 'studentHistory'])
             ->name('student.attendance.history');
+        Route::get('/student/quizzes', [QuizController::class, 'studentHistory'])
+            ->name('student.quizzes.history');
+
     });
 
     // =========================
