@@ -63,11 +63,8 @@
                 <h2 class="text-lg font-extrabold">Add MCQ Question</h2>
                 <p class="text-sm text-slate-600 mt-1">2–6 options, pick one correct.</p>
 
-                {{-- IMPORTANT: your route file uses quizzes.questions.add (teacherAddQuestion)
-                   If you keep quizzes.questions.store here, it will 404.
-                   So we use the correct one:
-                --}}
-                <form method="POST" action="{{ route('quizzes.questions.add', $quiz) }}" class="mt-5 space-y-4">
+                {{-- correct route name --}}
+                <form method="POST" action="{{ route('quizzes.questions.store', $quiz) }}" class="mt-5 space-y-4">
                     @csrf
 
                     <div>
@@ -97,10 +94,10 @@
                     <div>
                         <label class="block text-sm font-semibold text-slate-700">Correct Option</label>
                         <select name="correct_index" class="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3">
-                            <option value="0" @selected(old('correct_index')==='0')>Option 1</option>
-                            <option value="1" @selected(old('correct_index')==='1')>Option 2</option>
-                            <option value="2" @selected(old('correct_index')==='2')>Option 3</option>
-                            <option value="3" @selected(old('correct_index')==='3')>Option 4</option>
+                            <option value="0" {{ old('correct_index') == 0 ? 'selected' : '' }}>Option 1</option>
+                            <option value="1" {{ old('correct_index') == 1 ? 'selected' : '' }}>Option 2</option>
+                            <option value="2" {{ old('correct_index') == 2 ? 'selected' : '' }}>Option 3</option>
+                            <option value="3" {{ old('correct_index') == 3 ? 'selected' : '' }}>Option 4</option>
                         </select>
                     </div>
 
@@ -121,20 +118,20 @@
                     @forelse($quiz->questions as $q)
                         <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                             <div class="flex items-start justify-between gap-3">
-                                <div class="min-w-0">
-                                    <p class="font-extrabold break-words">{{ $q->text }}</p>
+                                <div class="pr-3">
+                                    <p class="font-extrabold">{{ $q->text }}</p>
                                     <p class="text-sm text-slate-600 mt-1">Points: {{ $q->points }}</p>
                                 </div>
 
                                 <div class="flex items-center gap-2 shrink-0">
                                     <span class="text-xs font-bold px-2 py-1 rounded-lg"
                                           style="background: rgba(237,183,10,.18); color:#3a2b00;">
-                                        MCQ
+                                        {{ strtoupper($q->type ?? 'MCQ') }}
                                     </span>
 
-                                    {{-- ✅ Edit Button --}}
+                                    {{--  MUST be a link (not a button submit) --}}
                                     <a href="{{ route('quizzes.questions.edit', [$quiz, $q]) }}"
-                                       class="px-3 py-2 rounded-xl font-semibold border border-slate-200 bg-white hover:shadow-sm transition">
+                                       class="px-4 py-2 rounded-xl font-semibold border border-slate-200 bg-white hover:shadow-sm transition">
                                         Edit
                                     </a>
                                 </div>

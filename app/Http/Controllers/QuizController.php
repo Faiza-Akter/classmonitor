@@ -87,7 +87,6 @@ class QuizController extends Controller
     {
         abort_unless($quiz->teacher_id === $request->user()->id, 403);
 
-        // Optional: block edits while active (keep system simple + consistent)
         if ($quiz->status === 'active') {
             return back()->withErrors(['text' => 'You cannot edit questions while the quiz is active. Stop the quiz first.']);
         }
@@ -100,18 +99,33 @@ class QuizController extends Controller
             'correct_index' => ['required', 'integer', 'min:0', 'max:5'],
         ]);
 
+        // Clean options (remove empty, re-index)
+        $options = collect($data['options'])
+            ->map(fn($v) => trim((string)$v))
+            ->filter(fn($v) => $v !== '')
+            ->values();
+
+        if ($options->count() < 2) {
+            return back()->withErrors(['options' => 'At least 2 valid options are required.'])->withInput();
+        }
+
+        $correctIndex = (int)$data['correct_index'];
+        if ($correctIndex < 0 || $correctIndex >= $options->count()) {
+            $correctIndex = 0;
+        }
+
         $question = Question::create([
             'quiz_id' => $quiz->id,
             'type' => 'mcq',
             'text' => $data['text'],
-            'points' => (int) $data['points'],
+            'points' => (int)$data['points'],
         ]);
 
-        foreach ($data['options'] as $i => $optText) {
+        foreach ($options as $i => $optText) {
             QuestionOption::create([
                 'question_id' => $question->id,
                 'text' => $optText,
-                'is_correct' => ((int) $i === (int) $data['correct_index']),
+                'is_correct' => ($i === $correctIndex),
             ]);
         }
 
@@ -119,7 +133,98 @@ class QuizController extends Controller
     }
 
     /**
-     * Teacher: start quiz (set active)
+     * Teacher: edit question form
+     * GET /quizzes/{quiz}/questions/{question}/edit
+     */
+    public function teacherEditQuestion(Request $request, Quiz $quiz, Question $question)
+    {
+        $teacher = $request->user();
+
+        abort_unless($quiz->teacher_id === $teacher->id, 403);
+        abort_unless($question->quiz_id === $quiz->id, 404);
+
+        if ($quiz->status === 'active') {
+            return redirect()->route('quizzes.manage', $quiz)
+                ->withErrors(['edit' => 'Stop the quiz before editing questions.']);
+        }
+
+        $question->load('options');
+
+        return view('quizzes.edit_question', compact('quiz', 'question'));
+    }
+
+    /**
+     * Teacher: update question
+     * PATCH /quizzes/{quiz}/questions/{question}
+     */
+    public function teacherUpdateQuestion(Request $request, Quiz $quiz, Question $question)
+    {
+        $teacher = $request->user();
+
+        abort_unless($quiz->teacher_id === $teacher->id, 403);
+        abort_unless($question->quiz_id === $quiz->id, 404);
+
+        if ($quiz->status === 'active') {
+            return redirect()->route('quizzes.manage', $quiz)
+                ->withErrors(['edit' => 'Stop the quiz before editing questions.']);
+        }
+
+        $validated = $request->validate([
+            'type' => ['required', 'in:mcq,tf,short'],
+            'text' => ['required', 'string', 'max:2000'],
+            'points' => ['nullable', 'integer', 'min:1', 'max:100'],
+
+            // options for mcq/tf only
+            'options' => ['array'],
+            'options.*' => ['nullable', 'string', 'max:255'],
+            'correct_index' => ['nullable', 'integer', 'min:0', 'max:10'],
+        ]);
+
+        $question->update([
+            'type' => $validated['type'],
+            'text' => $validated['text'],
+            'points' => $validated['points'] ?? 1,
+        ]);
+
+        // MCQ/TF → replace options
+        if (in_array($validated['type'], ['mcq', 'tf'])) {
+
+            $options = collect($validated['options'] ?? [])
+                ->map(fn($v) => trim((string)$v))
+                ->filter(fn($v) => $v !== '')
+                ->values();
+
+            if ($validated['type'] === 'tf') {
+                $options = collect(['True', 'False']);
+            }
+
+            if ($options->count() < 2) {
+                return back()->withErrors(['options' => 'At least 2 options are required.'])->withInput();
+            }
+
+            $correctIndex = (int)($validated['correct_index'] ?? 0);
+            if ($correctIndex < 0 || $correctIndex >= $options->count()) {
+                $correctIndex = 0;
+            }
+
+            $question->options()->delete();
+
+            foreach ($options as $i => $optText) {
+                $question->options()->create([
+                    'text' => $optText,
+                    'is_correct' => ($i === $correctIndex),
+                ]);
+            }
+        } else {
+            // short answer: remove mcq options
+            $question->options()->delete();
+        }
+
+        return redirect()->route('quizzes.manage', $quiz)->with('success', 'Question updated successfully.');
+    }
+
+    /**
+     * Teacher: start quiz
      * POST /quizzes/{quiz}/start
      */
     public function teacherStart(Request $request, Quiz $quiz)
@@ -130,7 +235,6 @@ class QuizController extends Controller
             return back()->withErrors(['start' => 'Add at least 1 question before starting the quiz.']);
         }
 
-        // Close other active quizzes for this teacher (optional but clean)
         Quiz::query()
             ->where('teacher_id', $quiz->teacher_id)
             ->where('status', 'active')
@@ -143,7 +247,7 @@ class QuizController extends Controller
     }
 
     /**
-     * Teacher: stop quiz (set closed)
+     * Teacher: stop quiz
      * POST /quizzes/{quiz}/stop
      */
     public function teacherStop(Request $request, Quiz $quiz)
@@ -180,7 +284,6 @@ class QuizController extends Controller
             ]
         );
 
-        // If already submitted, go to result page
         if ($attempt->submitted_at) {
             return redirect()->route('quizzes.result', $quiz);
         }
@@ -205,10 +308,8 @@ class QuizController extends Controller
 
         abort_if($attempt->submitted_at, 403);
 
-        // Load questions+options for scoring
         $quiz->load(['questions.options']);
 
-        // Validation: require an answer per question (MCQ)
         $rules = [];
         foreach ($quiz->questions as $q) {
             $rules["answers.{$q->id}"] = ['required', 'integer'];
@@ -218,12 +319,11 @@ class QuizController extends Controller
         $score = 0;
 
         foreach ($quiz->questions as $question) {
-            $selectedOptionId = (int) ($data['answers'][$question->id] ?? 0);
+            $selectedOptionId = (int)($data['answers'][$question->id] ?? 0);
 
             $option = $question->options->firstWhere('id', $selectedOptionId);
-            $isCorrect = $option ? (bool) $option->is_correct : false;
+            $isCorrect = $option ? (bool)$option->is_correct : false;
 
-            // Upsert per attempt+question
             QuizAnswer::updateOrCreate(
                 [
                     'attempt_id' => $attempt->id,
@@ -237,7 +337,7 @@ class QuizController extends Controller
             );
 
             if ($isCorrect) {
-                $score += (int) $question->points;
+                $score += (int)$question->points;
             }
         }
 
@@ -267,79 +367,5 @@ class QuizController extends Controller
             ->firstOrFail();
 
         return view('quizzes.result', compact('quiz', 'attempt'));
-    }
-
-    public function teacherEditQuestion(Request $request, Quiz $quiz, Question $question)
-    {
-        $teacher = $request->user();
-
-        abort_unless($quiz->teacher_id === $teacher->id, 403);
-        abort_unless($question->quiz_id === $quiz->id, 404);
-
-        $question->load('options');
-
-        return view('quizzes.edit_question', compact('quiz', 'question'));
-    }
-
-    public function teacherUpdateQuestion(Request $request, Quiz $quiz, Question $question)
-    {
-        $teacher = $request->user();
-
-        abort_unless($quiz->teacher_id === $teacher->id, 403);
-        abort_unless($question->quiz_id === $quiz->id, 404);
-
-        $validated = $request->validate([
-            'type' => ['required', 'in:mcq,tf,short'],
-            'text' => ['required', 'string', 'max:2000'],
-            'points' => ['nullable', 'integer', 'min:1', 'max:100'],
-
-            // options for mcq/tf only
-            'options' => ['array'],
-            'options.*' => ['nullable', 'string', 'max:255'],
-            'correct_index' => ['nullable', 'integer', 'min:0', 'max:10'],
-        ]);
-
-        $question->update([
-            'type' => $validated['type'],
-            'text' => $validated['text'],
-            'points' => $validated['points'] ?? 1,
-        ]);
-
-        // For MCQ/TF, replace options
-        if (in_array($validated['type'], ['mcq', 'tf'])) {
-            $options = collect($validated['options'] ?? [])
-                ->map(fn($v) => trim((string) $v))
-                ->filter(fn($v) => $v !== '')
-                ->values();
-
-            // enforce TF standard options
-            if ($validated['type'] === 'tf') {
-                $options = collect(['True', 'False']);
-            }
-
-            if ($options->count() < 2) {
-                return back()->withErrors(['options' => 'At least 2 options are required.'])->withInput();
-            }
-
-            $correctIndex = $validated['correct_index'] ?? 0;
-            if ($correctIndex < 0 || $correctIndex >= $options->count()) {
-                $correctIndex = 0;
-            }
-
-            // delete old options, insert new options
-            $question->options()->delete();
-
-            foreach ($options as $i => $optText) {
-                $question->options()->create([
-                    'text' => $optText,
-                    'is_correct' => ($i === $correctIndex),
-                ]);
-            }
-        } else {
-            // short answer: remove mcq options
-            $question->options()->delete();
-        }
-
-        return redirect()->route('quizzes.manage', $quiz)->with('success', 'Question updated successfully.');
     }
 }
