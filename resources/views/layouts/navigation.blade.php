@@ -3,7 +3,36 @@
         $cmBlue   = '#2463EB';
         $cmGreen  = '#8BDE63';
         $cmYellow = '#EDB70A';
-        $dashUrl  = route('dashboard');
+
+        $user = Auth::user();
+        $role = $user?->role ?? null;
+
+        // Role-aware destinations
+        $dashUrl = $role === 'teacher'
+            ? route('teacher.dashboard')
+            : route('student.dashboard');
+
+        // Attendance link (teacher vs student)
+        $attendanceUrl = $role === 'teacher'
+            ? route('attendance.index')
+            : route('attendance.join.form');
+
+        // Quizzes link (teacher vs student)
+        $quizzesUrl = $role === 'teacher'
+            ? route('quizzes.index')
+            : route('student.quizzes.history');
+
+        $roleLabel = $role ? ucfirst($role) : 'Account';
+
+        // Active states (simple + reliable)
+        $isDash = request()->routeIs('teacher.dashboard') || request()->routeIs('student.dashboard') || request()->routeIs('dashboard');
+        $isAttendance = $role === 'teacher'
+            ? request()->routeIs('attendance.*') || request()->is('attendance*')
+            : request()->routeIs('attendance.join.*') || request()->routeIs('student.attendance.*') || request()->is('attendance/join') || request()->is('student/attendance');
+        $isQuizzes = $role === 'teacher'
+            ? request()->routeIs('quizzes.*') || request()->is('quizzes*')
+            : request()->routeIs('student.quizzes.*') || request()->is('student/quizzes*') || request()->routeIs('quizzes.play') || request()->routeIs('quizzes.result');
+        $linkBase = "px-4 py-2 rounded-xl text-sm font-semibold transition";
     @endphp
 
     {{-- Solid white top bar --}}
@@ -19,34 +48,39 @@
                         </div>
                         <div class="leading-tight">
                             <p class="text-sm font-extrabold text-slate-900">ClassMonitor</p>
-                            <p class="text-[11px] text-slate-500 -mt-0.5">Teacher • Student</p>
+                            <p class="text-[11px] text-slate-500 -mt-0.5">{{ $roleLabel }}</p>
                         </div>
                     </a>
 
                     {{-- Desktop links --}}
                     <div class="hidden sm:flex items-center gap-1">
-                        @php
-                            $isDash = request()->routeIs('dashboard') || request()->is('teacher/*');
-                            $linkBase = "px-4 py-2 rounded-xl text-sm font-semibold transition";
-                        @endphp
-
                         <a href="{{ $dashUrl }}"
                            class="{{ $linkBase }} {{ $isDash ? 'text-white shadow-sm' : 'text-slate-700 hover:bg-slate-50' }}"
                            style="{{ $isDash ? "background:$cmBlue;" : '' }}">
                             Dashboard
                         </a>
 
-                        <a href="{{ url('/attendance') }}"
-                           class="{{ $linkBase }} text-slate-700 hover:bg-slate-50">
+                        <a href="{{ $attendanceUrl }}"
+                           class="{{ $linkBase }} {{ $isAttendance ? 'text-white shadow-sm' : 'text-slate-700 hover:bg-slate-50' }}"
+                           style="{{ $isAttendance ? "background:$cmGreen; color:#0B1B0F;" : '' }}">
                             <span class="inline-block w-2 h-2 rounded-full mr-2 align-middle" style="background:{{ $cmGreen }};"></span>
                             Attendance
                         </a>
 
-                        <a href="{{ url('/quizzes') }}"
-                           class="{{ $linkBase }} text-slate-700 hover:bg-slate-50">
+                        <a href="{{ $quizzesUrl }}"
+                           class="{{ $linkBase }} {{ $isQuizzes ? 'text-white shadow-sm' : 'text-slate-700 hover:bg-slate-50' }}"
+                           style="{{ $isQuizzes ? "background:$cmYellow; color:#3a2b00;" : '' }}">
                             <span class="inline-block w-2 h-2 rounded-full mr-2 align-middle" style="background:{{ $cmYellow }};"></span>
                             Quizzes
                         </a>
+
+                        {{-- Student-only quick link --}}
+                        @if($role === 'student')
+                            <a href="{{ route('student.attendance.history') }}"
+                               class="{{ $linkBase }} text-slate-700 hover:bg-slate-50">
+                                History
+                            </a>
+                        @endif
                     </div>
                 </div>
 
@@ -62,12 +96,12 @@
                             <button class="inline-flex items-center gap-3 px-3 py-2 rounded-xl border border-slate-200 bg-white shadow-sm hover:shadow-md transition focus:outline-none">
                                 <div class="w-9 h-9 rounded-xl grid place-items-center text-white font-extrabold"
                                      style="background: {{ $cmBlue }};">
-                                    {{ strtoupper(substr(Auth::user()->name ?? 'U', 0, 1)) }}
+                                    {{ strtoupper(substr($user->name ?? 'U', 0, 1)) }}
                                 </div>
 
                                 <div class="text-left">
-                                    <div class="text-sm font-bold text-slate-900 leading-tight">{{ Auth::user()->name }}</div>
-                                    <div class="text-[11px] text-slate-500 leading-tight">Account</div>
+                                    <div class="text-sm font-bold text-slate-900 leading-tight">{{ $user->name }}</div>
+                                    <div class="text-[11px] text-slate-500 leading-tight">{{ $roleLabel }}</div>
                                 </div>
 
                                 <svg class="fill-current h-4 w-4 text-slate-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
@@ -79,7 +113,7 @@
                         <x-slot name="content">
                             <div class="px-4 py-3">
                                 <p class="text-xs font-bold text-slate-500">Signed in as</p>
-                                <p class="text-sm font-extrabold text-slate-900 truncate">{{ Auth::user()->email }}</p>
+                                <p class="text-sm font-extrabold text-slate-900 truncate">{{ $user->email }}</p>
                             </div>
 
                             <div class="h-px bg-slate-200"></div>
@@ -127,17 +161,31 @@
         {{-- Mobile menu --}}
         <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden">
             <div class="px-4 pb-4 pt-3 space-y-2 bg-white border-t border-slate-200">
-                <a href="{{ $dashUrl }}" class="block px-4 py-3 rounded-2xl font-semibold border border-slate-200 bg-white text-slate-900">Dashboard</a>
-                <a href="{{ url('/attendance') }}" class="block px-4 py-3 rounded-2xl font-semibold border border-slate-200 bg-white text-slate-900">
-                    <span class="inline-block w-2 h-2 rounded-full mr-2 align-middle" style="background:{{ $cmGreen }};"></span> Attendance
+                <a href="{{ $dashUrl }}" class="block px-4 py-3 rounded-2xl font-semibold border border-slate-200 bg-white text-slate-900">
+                    Dashboard
                 </a>
-                <a href="{{ url('/quizzes') }}" class="block px-4 py-3 rounded-2xl font-semibold border border-slate-200 bg-white text-slate-900">
-                    <span class="inline-block w-2 h-2 rounded-full mr-2 align-middle" style="background:{{ $cmYellow }};"></span> Quizzes
+
+                <a href="{{ $attendanceUrl }}" class="block px-4 py-3 rounded-2xl font-semibold border border-slate-200 bg-white text-slate-900">
+                    <span class="inline-block w-2 h-2 rounded-full mr-2 align-middle" style="background:{{ $cmGreen }};"></span>
+                    Attendance
+                </a>
+
+                @if($role === 'student')
+                    <a href="{{ route('student.attendance.history') }}" class="block px-4 py-3 rounded-2xl font-semibold border border-slate-200 bg-white text-slate-900">
+                        Attendance History
+                    </a>
+                @endif
+
+                <a href="{{ $quizzesUrl }}" class="block px-4 py-3 rounded-2xl font-semibold border border-slate-200 bg-white text-slate-900">
+                    <span class="inline-block w-2 h-2 rounded-full mr-2 align-middle" style="background:{{ $cmYellow }};"></span>
+                    Quizzes
                 </a>
 
                 <div class="mt-3 rounded-2xl border border-slate-200 bg-white p-4">
-                    <p class="text-sm font-extrabold text-slate-900">{{ Auth::user()->name }}</p>
-                    <p class="text-xs text-slate-500 truncate">{{ Auth::user()->email }}</p>
+                    <p class="text-sm font-extrabold text-slate-900">{{ $user->name }}</p>
+                    <p class="text-xs text-slate-500 truncate">{{ $user->email }}</p>
+                    <p class="text-[11px] text-slate-500 mt-1">{{ $roleLabel }}</p>
+
                     <div class="mt-3 flex gap-2">
                         <a href="{{ route('profile.edit') }}" class="flex-1 text-center px-4 py-2 rounded-xl font-semibold text-white" style="background:{{ $cmBlue }};">
                             Profile
