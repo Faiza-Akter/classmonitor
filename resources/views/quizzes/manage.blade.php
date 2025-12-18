@@ -12,7 +12,7 @@
             <div>
                 <p class="text-sm font-semibold text-slate-600">Quiz</p>
                 <h1 class="mt-1 text-3xl font-extrabold">{{ $quiz->title }}</h1>
-                <p class="mt-1 text-sm text-slate-600">Add MCQ questions + options.</p>
+                <p class="mt-1 text-sm text-slate-600">Add MCQ questions + options. Short-answer supported (manual grading).</p>
             </div>
 
             <div class="flex flex-wrap gap-2 justify-end">
@@ -21,18 +21,21 @@
                     Back
                 </a>
 
-                {{-- ✅ Leaderboard Button --}}
                 <a href="{{ route('quizzes.leaderboard', $quiz) }}"
                    class="px-4 py-2 rounded-xl font-semibold text-white shadow-sm hover:shadow-md transition"
                    style="background: {{ $cmBlue }};">
                     Leaderboard
                 </a>
 
+                <a href="{{ route('quizzes.grading.index', $quiz) }}"
+                   class="px-4 py-2 rounded-xl font-semibold border border-slate-200 bg-white hover:shadow-sm transition">
+                    Manual Grading
+                </a>
+
                 @if($quiz->status !== 'active')
                     <form method="POST" action="{{ route('quizzes.start', $quiz) }}">
                         @csrf
-                        <button type="submit"
-                                class="px-4 py-2 rounded-xl font-semibold shadow-sm hover:shadow-md transition"
+                        <button class="px-4 py-2 rounded-xl font-semibold shadow-sm hover:shadow-md transition"
                                 style="background: {{ $cmGreen }}; color:#0B1B0F;">
                             Start Quiz
                         </button>
@@ -40,8 +43,7 @@
                 @else
                     <form method="POST" action="{{ route('quizzes.stop', $quiz) }}">
                         @csrf
-                        <button type="submit"
-                                class="px-4 py-2 rounded-xl font-semibold border border-slate-200 bg-white hover:shadow-sm transition">
+                        <button class="px-4 py-2 rounded-xl font-semibold border border-slate-200 bg-white hover:shadow-sm transition">
                             Stop Quiz
                         </button>
                     </form>
@@ -69,11 +71,20 @@
 
             {{-- Add question --}}
             <div class="rounded-2xl border border-slate-200 bg-white shadow-sm p-6">
-                <h2 class="text-lg font-extrabold">Add MCQ Question</h2>
-                <p class="text-sm text-slate-600 mt-1">2–6 options, pick one correct.</p>
+                <h2 class="text-lg font-extrabold">Add Question</h2>
+                <p class="text-sm text-slate-600 mt-1">MCQ (auto-score) or Short (manual grade).</p>
 
                 <form method="POST" action="{{ route('quizzes.questions.store', $quiz) }}" class="mt-5 space-y-4">
                     @csrf
+
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700">Type</label>
+                        <select name="type" class="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3">
+                            <option value="mcq" selected>MCQ</option>
+                            <option value="short">Short Answer</option>
+                        </select>
+                        <p class="text-xs text-slate-500 mt-2">Short answers require manual grading.</p>
+                    </div>
 
                     <div>
                         <label class="block text-sm font-semibold text-slate-700">Question</label>
@@ -88,11 +99,12 @@
                                class="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-slate-200">
                     </div>
 
+                    {{-- MCQ options (optional: still submitted, controller will ignore for short) --}}
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         @for($i=0; $i<4; $i++)
                             <div>
-                                <label class="block text-sm font-semibold text-slate-700">Option {{ $i+1 }}</label>
-                                <input name="options[]" value="{{ old("options.$i") }}" required
+                                <label class="block text-sm font-semibold text-slate-700">Option {{ $i+1 }} (MCQ)</label>
+                                <input name="options[]" value="{{ old("options.$i") }}"
                                        class="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-slate-200"
                                        placeholder="Option text">
                             </div>
@@ -100,12 +112,12 @@
                     </div>
 
                     <div>
-                        <label class="block text-sm font-semibold text-slate-700">Correct Option</label>
+                        <label class="block text-sm font-semibold text-slate-700">Correct Option (MCQ)</label>
                         <select name="correct_index" class="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3">
-                            <option value="0" {{ old('correct_index') == 0 ? 'selected' : '' }}>Option 1</option>
-                            <option value="1" {{ old('correct_index') == 1 ? 'selected' : '' }}>Option 2</option>
-                            <option value="2" {{ old('correct_index') == 2 ? 'selected' : '' }}>Option 3</option>
-                            <option value="3" {{ old('correct_index') == 3 ? 'selected' : '' }}>Option 4</option>
+                            <option value="0">Option 1</option>
+                            <option value="1">Option 2</option>
+                            <option value="2">Option 3</option>
+                            <option value="3">Option 4</option>
                         </select>
                     </div>
 
@@ -141,21 +153,38 @@
                                        class="px-4 py-2 rounded-xl font-semibold border border-slate-200 bg-white hover:shadow-sm transition">
                                         Edit
                                     </a>
+
+                                    {{-- ✅ Delete beside edit --}}
+                                    <form method="POST" action="{{ route('quizzes.questions.destroy', [$quiz, $q]) }}"
+                                          onsubmit="return confirm('Delete this question?');">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit"
+                                                class="px-4 py-2 rounded-xl font-semibold border border-slate-200 bg-white hover:shadow-sm transition">
+                                            Delete
+                                        </button>
+                                    </form>
                                 </div>
                             </div>
 
-                            <ul class="mt-3 space-y-1">
-                                @foreach($q->options as $opt)
-                                    <li class="text-sm flex items-center gap-2">
-                                        <span class="inline-block w-2 h-2 rounded-full"
-                                              style="background: {{ $opt->is_correct ? $cmGreen : '#cbd5e1' }};"></span>
-                                        <span class="{{ $opt->is_correct ? 'font-semibold' : '' }}">{{ $opt->text }}</span>
-                                        @if($opt->is_correct)
-                                            <span class="text-xs font-bold" style="color: {{ $cmGreen }};">(correct)</span>
-                                        @endif
-                                    </li>
-                                @endforeach
-                            </ul>
+                            @if(($q->type ?? 'mcq') === 'mcq')
+                                <ul class="mt-3 space-y-1">
+                                    @foreach($q->options as $opt)
+                                        <li class="text-sm flex items-center gap-2">
+                                            <span class="inline-block w-2 h-2 rounded-full"
+                                                  style="background: {{ $opt->is_correct ? $cmGreen : '#cbd5e1' }};"></span>
+                                            <span class="{{ $opt->is_correct ? 'font-semibold' : '' }}">{{ $opt->text }}</span>
+                                            @if($opt->is_correct)
+                                                <span class="text-xs font-bold" style="color: {{ $cmGreen }};">(correct)</span>
+                                            @endif
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            @else
+                                <p class="mt-3 text-sm text-slate-600">
+                                    Short answer question (manual grading).
+                                </p>
+                            @endif
                         </div>
                     @empty
                         <div class="text-slate-600">No questions yet.</div>

@@ -63,6 +63,10 @@ class QuizController extends Controller
         return view('quizzes.manage', compact('quiz'));
     }
 
+    /**
+     * Teacher: Add question
+     * Supports: mcq, tf, short
+     */
     public function teacherAddQuestion(Request $request, Quiz $quiz)
     {
         abort_unless($quiz->teacher_id === $request->user()->id, 403);
@@ -72,29 +76,76 @@ class QuizController extends Controller
         }
 
         $data = $request->validate([
+            'type' => ['required', 'in:mcq,tf,short'],
             'text' => ['required', 'string', 'max:2000'],
             'points' => ['required', 'integer', 'min:1', 'max:100'],
-            'options' => ['required', 'array', 'min:2', 'max:6'],
-            'options.*' => ['required', 'string', 'max:255'],
-            'correct_index' => ['required', 'integer', 'min:0', 'max:5'],
+
+            // Options only needed for mcq/tf
+            'options' => ['nullable', 'array', 'max:10'],
+            'options.*' => ['nullable', 'string', 'max:255'],
+            'correct_index' => ['nullable', 'integer', 'min:0', 'max:10'],
         ]);
+
+        $type = $data['type'];
 
         $question = Question::create([
             'quiz_id' => $quiz->id,
-            'type' => 'mcq',
+            'type' => $type,
             'text' => $data['text'],
             'points' => (int) $data['points'],
         ]);
 
-        foreach ($data['options'] as $i => $optText) {
+        // SHORT: no options
+        if ($type === 'short') {
+            return back()->with('success', 'Short-answer question added. (Manual grading needed)');
+        }
+
+        // TF: force options True/False
+        if ($type === 'tf') {
+            $options = collect(['True', 'False']);
+            $correctIndex = (int) ($data['correct_index'] ?? 0);
+            if ($correctIndex < 0 || $correctIndex > 1) $correctIndex = 0;
+
+            foreach ($options as $i => $optText) {
+                QuestionOption::create([
+                    'question_id' => $question->id,
+                    'text' => $optText,
+                    'is_correct' => ($i === $correctIndex),
+                ]);
+            }
+
+            return back()->with('success', 'True/False question added.');
+        }
+
+        // MCQ: validate options (2–6 recommended)
+        $options = collect($data['options'] ?? [])
+            ->map(fn($v) => trim((string) $v))
+            ->filter(fn($v) => $v !== '')
+            ->values();
+
+        if ($options->count() < 2) {
+            $question->delete();
+            return back()->withErrors(['options' => 'MCQ needs at least 2 options.'])->withInput();
+        }
+
+        if ($options->count() > 6) {
+            $options = $options->take(6)->values();
+        }
+
+        $correctIndex = (int) ($data['correct_index'] ?? 0);
+        if ($correctIndex < 0 || $correctIndex >= $options->count()) {
+            $correctIndex = 0;
+        }
+
+        foreach ($options as $i => $optText) {
             QuestionOption::create([
                 'question_id' => $question->id,
                 'text' => $optText,
-                'is_correct' => ((int) $i === (int) $data['correct_index']),
+                'is_correct' => ($i === $correctIndex),
             ]);
         }
 
-        return back()->with('success', 'Question added.');
+        return back()->with('success', 'MCQ question added.');
     }
 
     public function teacherStart(Request $request, Quiz $quiz)
@@ -125,7 +176,7 @@ class QuizController extends Controller
         return back()->with('success', 'Quiz ended.');
     }
 
-    // ✅ NEW: Leaderboard
+    // Leaderboard
     public function teacherLeaderboard(Request $request, Quiz $quiz)
     {
         abort_unless($quiz->teacher_id === $request->user()->id, 403);
@@ -139,7 +190,7 @@ class QuizController extends Controller
             ->whereNotNull('submitted_at')
             ->with('student:id,name,email')
             ->orderByDesc('score')
-            ->orderBy('submitted_at') // tie-break: earlier submit wins
+            ->orderBy('submitted_at')
             ->limit(100)
             ->get();
 
@@ -178,9 +229,9 @@ class QuizController extends Controller
         $validated = $request->validate([
             'type' => ['required', 'in:mcq,tf,short'],
             'text' => ['required', 'string', 'max:2000'],
-            'points' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'points' => ['required', 'integer', 'min:1', 'max:100'],
 
-            'options' => ['array'],
+            'options' => ['nullable', 'array', 'max:10'],
             'options.*' => ['nullable', 'string', 'max:255'],
             'correct_index' => ['nullable', 'integer', 'min:0', 'max:10'],
         ]);
@@ -188,41 +239,149 @@ class QuizController extends Controller
         $question->update([
             'type' => $validated['type'],
             'text' => $validated['text'],
-            'points' => $validated['points'] ?? 1,
+            'points' => (int) $validated['points'],
         ]);
 
-        if (in_array($validated['type'], ['mcq', 'tf'])) {
-            $options = collect($validated['options'] ?? [])
-                ->map(fn($v) => trim((string) $v))
-                ->filter(fn($v) => $v !== '')
-                ->values();
+        // SHORT: remove options
+        if ($validated['type'] === 'short') {
+            $question->options()->delete();
+            return redirect()->route('quizzes.manage', $quiz)->with('success', 'Question updated successfully.');
+        }
 
-            if ($validated['type'] === 'tf') {
-                $options = collect(['True', 'False']);
-            }
-
-            if ($options->count() < 2) {
-                return back()->withErrors(['options' => 'At least 2 options are required.'])->withInput();
-            }
-
-            $correctIndex = $validated['correct_index'] ?? 0;
-            if ($correctIndex < 0 || $correctIndex >= $options->count()) {
-                $correctIndex = 0;
-            }
+        // TF: force options
+        if ($validated['type'] === 'tf') {
+            $correctIndex = (int) ($validated['correct_index'] ?? 0);
+            if ($correctIndex < 0 || $correctIndex > 1) $correctIndex = 0;
 
             $question->options()->delete();
-
-            foreach ($options as $i => $optText) {
+            foreach (['True', 'False'] as $i => $optText) {
                 $question->options()->create([
                     'text' => $optText,
                     'is_correct' => ($i === $correctIndex),
                 ]);
             }
-        } else {
-            $question->options()->delete();
+
+            return redirect()->route('quizzes.manage', $quiz)->with('success', 'Question updated successfully.');
+        }
+
+        // MCQ: replace options
+        $options = collect($validated['options'] ?? [])
+            ->map(fn($v) => trim((string) $v))
+            ->filter(fn($v) => $v !== '')
+            ->values();
+
+        if ($options->count() < 2) {
+            return back()->withErrors(['options' => 'At least 2 options are required for MCQ.'])->withInput();
+        }
+
+        if ($options->count() > 6) {
+            $options = $options->take(6)->values();
+        }
+
+        $correctIndex = (int) ($validated['correct_index'] ?? 0);
+        if ($correctIndex < 0 || $correctIndex >= $options->count()) $correctIndex = 0;
+
+        $question->options()->delete();
+
+        foreach ($options as $i => $optText) {
+            $question->options()->create([
+                'text' => $optText,
+                'is_correct' => ($i === $correctIndex),
+            ]);
         }
 
         return redirect()->route('quizzes.manage', $quiz)->with('success', 'Question updated successfully.');
+    }
+
+    // ✅ Delete Question
+    public function teacherDeleteQuestion(Request $request, Quiz $quiz, Question $question)
+    {
+        $teacher = $request->user();
+
+        abort_unless($quiz->teacher_id === $teacher->id, 403);
+        abort_unless($question->quiz_id === $quiz->id, 404);
+
+        if ($quiz->status === 'active') {
+            return back()->withErrors(['delete' => 'Stop the quiz before deleting questions.']);
+        }
+
+        $question->options()->delete();
+        $question->delete();
+
+        return back()->with('success', 'Question deleted.');
+    }
+
+    /**
+     * Manual grading list
+     */
+    public function teacherGradingIndex(Request $request, Quiz $quiz)
+    {
+        abort_unless($quiz->teacher_id === $request->user()->id, 403);
+
+        $attempts = QuizAttempt::query()
+            ->where('quiz_id', $quiz->id)
+            ->with('student:id,name,email')
+            ->latest('submitted_at')
+            ->paginate(25);
+
+        return view('quizzes.grading.index', compact('quiz', 'attempts'));
+    }
+
+    /**
+     * Manual grading detail
+     */
+    public function teacherGradingShow(Request $request, Quiz $quiz, QuizAttempt $attempt)
+    {
+        abort_unless($quiz->teacher_id === $request->user()->id, 403);
+        abort_unless($attempt->quiz_id === $quiz->id, 404);
+
+        $attempt->load([
+            'student:id,name,email',
+            'answers.question.options',
+            'answers.selectedOption',
+        ]);
+
+        return view('quizzes.grading.show', compact('quiz', 'attempt'));
+    }
+
+    /**
+     * Save manual grading (short answers)
+     */
+    public function teacherGradeAttempt(Request $request, Quiz $quiz, QuizAttempt $attempt)
+    {
+        abort_unless($quiz->teacher_id === $request->user()->id, 403);
+        abort_unless($attempt->quiz_id === $quiz->id, 404);
+
+        $attempt->load('answers.question');
+
+        $data = $request->validate([
+            'grades' => ['required', 'array'],
+            'grades.*' => ['required', 'in:0,1'],
+        ]);
+
+        foreach ($attempt->answers as $ans) {
+            if (($ans->question?->type ?? '') !== 'short') {
+                continue;
+            }
+
+            $val = (int) ($data['grades'][$ans->id] ?? 0);
+            $ans->update(['is_correct' => (bool) $val]);
+        }
+
+        // recompute score (only correct answers count)
+        $score = 0;
+        foreach ($attempt->answers as $ans) {
+            $q = $ans->question;
+            if (!$q) continue;
+
+            if ($ans->is_correct === true) {
+                $score += (int) ($q->points ?? 1);
+            }
+        }
+
+        $attempt->update(['score' => $score]);
+
+        return back()->with('success', 'Grading saved & score updated.');
     }
 
     /* ============================
@@ -252,7 +411,7 @@ class QuizController extends Controller
 
         $quiz->load(['questions.options']);
 
-        // ✅ TIMER: calculate remaining seconds
+        // calculate remaining seconds
         $durationSeconds = $quiz->duration ? ((int) $quiz->duration * 60) : null;
 
         $remainingSeconds = null;
@@ -261,12 +420,9 @@ class QuizController extends Controller
             $remainingSeconds = max(0, now()->diffInSeconds($endAt, false));
         }
 
-        // If time is up, auto-submit server side (redirect to submit route)
         if ($remainingSeconds !== null && $remainingSeconds <= 0) {
-            // submit empty? we should force student to submit quickly in UI,
-            // but server can't guess answers. So we just block play:
             return redirect()->route('quizzes.result', $quiz)
-                ->withErrors(['time' => 'Time is up. Please view your result (or submit earlier next time).']);
+                ->withErrors(['time' => 'Time is up.']);
         }
 
         return view('quizzes.play', compact('quiz', 'attempt', 'remainingSeconds'));
@@ -285,26 +441,49 @@ class QuizController extends Controller
 
         $quiz->load(['questions.options']);
 
-        // ✅ TIMER ENFORCEMENT
+        // TIMER ENFORCEMENT (accept late submit for better UX)
         if ($quiz->duration && $attempt->started_at) {
             $endAt = $attempt->started_at->copy()->addMinutes((int) $quiz->duration);
-            if (now()->greaterThan($endAt)) {
-                // still accept submission, but time is exceeded; you can also choose to reject.
-                // We'll accept (better UX).
+            // If you want to reject late submit: abort_if(now()->greaterThan($endAt), 403);
+        }
+
+        // Dynamic validation based on question type
+        $rules = [];
+        foreach ($quiz->questions as $q) {
+            if (($q->type ?? 'mcq') === 'short') {
+                $rules["short.{$q->id}"] = ['required', 'string', 'max:2000'];
+            } else {
+                $rules["answers.{$q->id}"] = ['required', 'integer'];
             }
         }
 
-        $rules = [];
-        foreach ($quiz->questions as $q) {
-            $rules["answers.{$q->id}"] = ['required', 'integer'];
-        }
         $data = $request->validate($rules);
 
         $score = 0;
 
         foreach ($quiz->questions as $question) {
-            $selectedOptionId = (int) ($data['answers'][$question->id] ?? 0);
+            $type = $question->type ?? 'mcq';
 
+            if ($type === 'short') {
+                $txt = trim((string) ($data['short'][$question->id] ?? ''));
+
+                QuizAnswer::updateOrCreate(
+                    [
+                        'attempt_id' => $attempt->id,
+                        'question_id' => $question->id,
+                    ],
+                    [
+                        'selected_option_id' => null,
+                        'short_answer' => $txt,
+                        // short answer needs manual grading
+                        'is_correct' => null,
+                    ]
+                );
+
+                continue;
+            }
+
+            $selectedOptionId = (int) ($data['answers'][$question->id] ?? 0);
             $option = $question->options->firstWhere('id', $selectedOptionId);
             $isCorrect = $option ? (bool) $option->is_correct : false;
 
@@ -347,14 +526,13 @@ class QuizController extends Controller
             ])
             ->firstOrFail();
 
-        // compute max score
         $quiz->load('questions');
         $maxScore = (int) $quiz->questions->sum('points');
 
         return view('quizzes.result', compact('quiz', 'attempt', 'maxScore'));
     }
 
-    // ✅ NEW: Student quiz history page
+    // Student quiz history page
     public function studentHistory(Request $request)
     {
         $student = $request->user();
