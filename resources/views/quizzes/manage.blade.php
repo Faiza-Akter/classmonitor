@@ -15,16 +15,24 @@
                 <p class="mt-1 text-sm text-slate-600">Add MCQ questions + options.</p>
             </div>
 
-            <div class="flex gap-2">
+            <div class="flex flex-wrap gap-2 justify-end">
                 <a href="{{ route('quizzes.index') }}"
                    class="px-4 py-2 rounded-xl font-semibold border border-slate-200 bg-white hover:shadow-sm transition">
                     Back
                 </a>
 
+                {{-- ✅ Leaderboard Button --}}
+                <a href="{{ route('quizzes.leaderboard', $quiz) }}"
+                   class="px-4 py-2 rounded-xl font-semibold text-white shadow-sm hover:shadow-md transition"
+                   style="background: {{ $cmBlue }};">
+                    Leaderboard
+                </a>
+
                 @if($quiz->status !== 'active')
                     <form method="POST" action="{{ route('quizzes.start', $quiz) }}">
                         @csrf
-                        <button class="px-4 py-2 rounded-xl font-semibold shadow-sm hover:shadow-md transition"
+                        <button type="submit"
+                                class="px-4 py-2 rounded-xl font-semibold shadow-sm hover:shadow-md transition"
                                 style="background: {{ $cmGreen }}; color:#0B1B0F;">
                             Start Quiz
                         </button>
@@ -32,7 +40,8 @@
                 @else
                     <form method="POST" action="{{ route('quizzes.stop', $quiz) }}">
                         @csrf
-                        <button class="px-4 py-2 rounded-xl font-semibold border border-slate-200 bg-white hover:shadow-sm transition">
+                        <button type="submit"
+                                class="px-4 py-2 rounded-xl font-semibold border border-slate-200 bg-white hover:shadow-sm transition">
                             Stop Quiz
                         </button>
                     </form>
@@ -63,7 +72,6 @@
                 <h2 class="text-lg font-extrabold">Add MCQ Question</h2>
                 <p class="text-sm text-slate-600 mt-1">2–6 options, pick one correct.</p>
 
-                {{-- correct route name --}}
                 <form method="POST" action="{{ route('quizzes.questions.store', $quiz) }}" class="mt-5 space-y-4">
                     @csrf
 
@@ -129,7 +137,6 @@
                                         {{ strtoupper($q->type ?? 'MCQ') }}
                                     </span>
 
-                                    {{--  MUST be a link (not a button submit) --}}
                                     <a href="{{ route('quizzes.questions.edit', [$quiz, $q]) }}"
                                        class="px-4 py-2 rounded-xl font-semibold border border-slate-200 bg-white hover:shadow-sm transition">
                                         Edit
