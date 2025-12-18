@@ -1,51 +1,104 @@
 @extends('layouts.app')
 
 @section('content')
-@php $cmBlue='#2463EB'; @endphp
+@php
+  $cmBlue='#2463EB'; $cmGreen='#8BDE63'; $cmYellow='#EDB70A';
+@endphp
 
 <div class="min-h-[calc(100vh-88px)] bg-white text-slate-900">
-    <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-10">
+  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
 
+    <div class="flex items-start justify-between gap-4">
+      <div>
         <p class="text-sm font-semibold text-slate-600">Quiz</p>
         <h1 class="mt-1 text-3xl font-extrabold">{{ $quiz->title }}</h1>
         <p class="mt-1 text-sm text-slate-600">Answer all questions and submit.</p>
+      </div>
 
-        @if($errors->any())
-            <div class="mt-5 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-red-800">
-                <ul class="list-disc pl-5">
-                    @foreach($errors->all() as $e)
-                        <li>{{ $e }}</li>
-                    @endforeach
-                </ul>
-            </div>
-        @endif
-
-        <form method="POST" action="{{ route('quizzes.submit', $quiz) }}" class="mt-6 space-y-4">
-            @csrf
-
-            @foreach($quiz->questions as $q)
-                <div class="rounded-2xl border border-slate-200 bg-white shadow-sm p-5">
-                    <p class="font-extrabold">{{ $q->text }}</p>
-                    <p class="text-sm text-slate-600 mt-1">Points: {{ $q->points }}</p>
-
-                    <div class="mt-4 space-y-2">
-                        @foreach($q->options as $opt)
-                            <label class="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 cursor-pointer">
-                                <input type="radio" name="answers[{{ $q->id }}]" value="{{ $opt->id }}" required>
-                                <span>{{ $opt->text }}</span>
-                            </label>
-                        @endforeach
-                    </div>
-                </div>
-            @endforeach
-
-            <button type="submit"
-                    class="w-full px-5 py-3 rounded-2xl font-semibold text-white shadow-sm hover:shadow-md transition"
-                    style="background: {{ $cmBlue }};">
-                Submit Quiz
-            </button>
-        </form>
-
+      @if(isset($remainingSeconds) && $remainingSeconds !== null)
+        <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+          <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Time Left</p>
+          <p id="timer" class="text-2xl font-extrabold" style="color: {{ $cmBlue }};">--:--</p>
+        </div>
+      @endif
     </div>
+
+    @if($errors->any())
+      <div class="mt-5 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-red-800">
+        <ul class="list-disc pl-5">
+          @foreach($errors->all() as $e)
+            <li>{{ $e }}</li>
+          @endforeach
+        </ul>
+      </div>
+    @endif
+
+    <form id="quizForm" class="mt-6 space-y-4" method="POST" action="{{ route('quizzes.submit', $quiz) }}">
+      @csrf
+
+      @foreach($quiz->questions as $q)
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <p class="font-extrabold break-words">{{ $q->text }}</p>
+              <p class="text-sm text-slate-600 mt-1">Points: {{ $q->points }}</p>
+            </div>
+            <span class="text-xs font-bold px-2 py-1 rounded-lg"
+                  style="background: rgba(237,183,10,.18); color:#3a2b00;">MCQ</span>
+          </div>
+
+          <div class="mt-4 space-y-2">
+            @foreach($q->options as $opt)
+              <label class="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 cursor-pointer hover:bg-white transition">
+                <input type="radio"
+                       name="answers[{{ $q->id }}]"
+                       value="{{ $opt->id }}"
+                       required>
+                <span class="text-sm">{{ $opt->text }}</span>
+              </label>
+            @endforeach
+          </div>
+        </div>
+      @endforeach
+
+      <button type="submit"
+              class="px-6 py-3 rounded-xl font-semibold text-white shadow-sm hover:shadow-md transition"
+              style="background: {{ $cmBlue }};">
+        Submit Quiz
+      </button>
+    </form>
+
+  </div>
 </div>
+
+@if(isset($remainingSeconds) && $remainingSeconds !== null)
+<script>
+  let remaining = Number(@json($remainingSeconds));
+
+  function fmt(sec){
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+  }
+
+  const timerEl = document.getElementById('timer');
+  const form = document.getElementById('quizForm');
+
+  function tick(){
+    if (!timerEl) return;
+    timerEl.textContent = fmt(Math.max(0, remaining));
+
+    if (remaining <= 0) {
+      // auto-submit
+      form.submit();
+      return;
+    }
+
+    remaining -= 1;
+    setTimeout(tick, 1000);
+  }
+
+  tick();
+</script>
+@endif
 @endsection
