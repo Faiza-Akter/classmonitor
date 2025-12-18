@@ -5,14 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\AttendanceSession;
 use App\Models\AttendanceRecord;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 
 class AttendanceController extends Controller
 {
-    /**
-     * Teacher page: attendance sessions index
-     */
+    // Teacher page
     public function index(Request $request)
     {
         $teacher = $request->user();
@@ -30,9 +27,29 @@ class AttendanceController extends Controller
         return view('attendance.index', compact('activeSession', 'recentSessions'));
     }
 
-    /**
-     * Teacher creates a new session (anti-proxy: expires in N minutes)
-     */
+    // eacher session details page (QR + full record list)
+    public function show(Request $request, AttendanceSession $session)
+    {
+        $teacher = $request->user();
+        abort_unless($session->teacher_id === $teacher->id, 403);
+
+        $session->load('teacher');
+
+        $records = $session->records()
+            ->with('student:id,name,email')
+            ->latest('marked_at')
+            ->paginate(25);
+
+        $count = $session->records()->count();
+
+        return view('attendance.show', [
+            'session' => $session,
+            'records' => $records,
+            'count'   => $count,
+        ]);
+    }
+
+    // Teacher creates a new session (anti-proxy: expires in N minutes)
     public function create(Request $request)
     {
         $request->validate([
@@ -41,57 +58,47 @@ class AttendanceController extends Controller
 
         $teacher = $request->user();
 
-        // End previous active sessions (clean)
+        // end previous active session (optional but clean)
         AttendanceSession::where('teacher_id', $teacher->id)
             ->active()
             ->update(['ended_at' => now()]);
 
-        // Generate unique session code
         $code = strtoupper(Str::random(6));
+
+        // ensure unique (rare collision)
         while (AttendanceSession::where('session_code', $code)->exists()) {
             $code = strtoupper(Str::random(6));
         }
 
-        AttendanceSession::create([
-            'teacher_id' => $teacher->id,
+        $session = AttendanceSession::create([
+            'teacher_id'   => $teacher->id,
             'session_code' => $code,
-            'starts_at' => now(),
-            'expires_at' => now()->addMinutes((int) $request->expires_minutes),
-            'ended_at' => null,
+            'starts_at'    => now(),
+            'expires_at'   => now()->addMinutes((int) $request->expires_minutes),
         ]);
 
+        //Better UX: go directly to session page (QR + live list)
         return redirect()
-            ->route('attendance.index')
+            ->route('attendance.sessions.show', $session)
             ->with('success', 'Attendance session created.');
     }
 
-    /**
-     * Teacher ends a session
-     */
     public function end(Request $request, AttendanceSession $session)
     {
         $teacher = $request->user();
-
         abort_unless($session->teacher_id === $teacher->id, 403);
 
         $session->update(['ended_at' => now()]);
 
-        return redirect()
-            ->route('attendance.index')
-            ->with('success', 'Session ended.');
+        return back()->with('success', 'Session ended.');
     }
 
-    /**
-     * Student join form
-     */
+    // Student join by code
     public function joinForm()
     {
         return view('attendance.join');
     }
 
-    /**
-     * Student join by code and mark attendance
-     */
     public function join(Request $request)
     {
         $request->validate([
@@ -125,14 +132,10 @@ class AttendanceController extends Controller
             ]
         );
 
-        return redirect()
-            ->route('student.dashboard')
-            ->with('success', 'Attendance marked!');
+        return redirect()->route('student.dashboard')->with('success', 'Attendance marked!');
     }
 
-    /**
-     * Teacher live endpoint (polling)
-     */
+    // Teacher live endpoint (polling)
     public function live(Request $request, AttendanceSession $session)
     {
         $teacher = $request->user();
@@ -148,7 +151,8 @@ class AttendanceController extends Controller
             ->map(fn($r) => [
                 'name' => $r->student?->name ?? 'Student',
                 'email' => $r->student?->email ?? '',
-                'time' => $r->marked_at?->format('h:i A') ?? '',
+                // use app timezone
+                'time' => $r->marked_at ? $r->marked_at->timezone(config('app.timezone'))->format('h:i A') : '',
             ]);
 
         return response()->json([
@@ -158,7 +162,7 @@ class AttendanceController extends Controller
     }
 
     /**
-     * ✅ Student Attendance History
+     * Student Attendance History
      * URL: /student/attendance
      */
     public function studentHistory(Request $request)
@@ -178,7 +182,7 @@ class AttendanceController extends Controller
     }
 
     /**
-     * ✅ Teacher Export Attendance Sessions CSV
+     * Teacher Export Attendance Sessions CSV
      * URL: /attendance/export/csv
      */
     public function exportCsv(Request $request)
@@ -197,7 +201,7 @@ class AttendanceController extends Controller
         return response()->streamDownload(function () use ($sessions) {
             $out = fopen('php://output', 'w');
 
-            // ✅ Excel-friendly UTF-8 BOM
+            //Excel-friendly UTF-8 BOM
             fwrite($out, "\xEF\xBB\xBF");
 
             // CSV Header
