@@ -68,7 +68,7 @@
                         <option value="short" @selected(old('type', $question->type) === 'short')>Short Answer</option>
                     </select>
                     <p class="text-xs text-slate-500 mt-2">
-                        (For now MCQ is recommended. TF/Short will work based on your controller, but student play UI may still be MCQ-only.)
+        
                     </p>
                 </div>
 

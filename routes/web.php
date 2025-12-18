@@ -5,6 +5,9 @@ use App\Http\Controllers\TeacherDashboardController;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\QuizController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\StudentDashboardController;
+use App\Models\QuizAttempt;
+
 
 Route::get('/', function () {
     return view('welcome');
@@ -13,7 +16,8 @@ Route::get('/', function () {
 Route::get('/dashboard', function () {
     $user = request()->user();
 
-    if (!$user) return redirect()->route('login');
+    if (!$user)
+        return redirect()->route('login');
 
     return $user->role === 'teacher'
         ? redirect()->route('teacher.dashboard')
@@ -28,9 +32,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('teacher.dashboard');
 
     // Student Dashboard
-    Route::view('/student/dashboard', 'dashboard.student')
+    Route::get('/student/dashboard', [StudentDashboardController::class, 'index'])
         ->middleware('student')
         ->name('student.dashboard');
+
 
     // Profile (shared)
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
