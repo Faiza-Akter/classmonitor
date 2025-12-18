@@ -104,7 +104,8 @@ class QuizController extends Controller
         if ($type === 'tf') {
             $options = collect(['True', 'False']);
             $correctIndex = (int) ($data['correct_index'] ?? 0);
-            if ($correctIndex < 0 || $correctIndex > 1) $correctIndex = 0;
+            if ($correctIndex < 0 || $correctIndex > 1)
+                $correctIndex = 0;
 
             foreach ($options as $i => $optText) {
                 QuestionOption::create([
@@ -251,7 +252,8 @@ class QuizController extends Controller
         // TF: force options
         if ($validated['type'] === 'tf') {
             $correctIndex = (int) ($validated['correct_index'] ?? 0);
-            if ($correctIndex < 0 || $correctIndex > 1) $correctIndex = 0;
+            if ($correctIndex < 0 || $correctIndex > 1)
+                $correctIndex = 0;
 
             $question->options()->delete();
             foreach (['True', 'False'] as $i => $optText) {
@@ -279,7 +281,8 @@ class QuizController extends Controller
         }
 
         $correctIndex = (int) ($validated['correct_index'] ?? 0);
-        if ($correctIndex < 0 || $correctIndex >= $options->count()) $correctIndex = 0;
+        if ($correctIndex < 0 || $correctIndex >= $options->count())
+            $correctIndex = 0;
 
         $question->options()->delete();
 
@@ -372,7 +375,8 @@ class QuizController extends Controller
         $score = 0;
         foreach ($attempt->answers as $ans) {
             $q = $ans->question;
-            if (!$q) continue;
+            if (!$q)
+                continue;
 
             if ($ans->is_correct === true) {
                 $score += (int) ($q->points ?? 1);
@@ -553,4 +557,30 @@ class QuizController extends Controller
 
         return view('student.quizzes.history', compact('attempts'));
     }
+
+    public function studentAttemptShow(Request $request, QuizAttempt $attempt)
+    {
+        $student = $request->user();
+        abort_unless($attempt->student_id === $student->id, 403);
+
+        $attempt->load([
+            'quiz.teacher:id,name',
+            'quiz.questions.options',
+            'answers.question.options',
+            'answers.selectedOption',
+        ]);
+
+        $maxScore = (int) ($attempt->quiz?->questions?->sum('points') ?? 0);
+
+        // helpful: compute correct option per question (for mcq/tf)
+        $correctByQuestion = [];
+        foreach (($attempt->quiz?->questions ?? []) as $q) {
+            if (in_array($q->type, ['mcq', 'tf'])) {
+                $correctByQuestion[$q->id] = $q->options->firstWhere('is_correct', true);
+            }
+        }
+
+        return view('student.quizzes.show', compact('attempt', 'maxScore', 'correctByQuestion'));
+    }
+
 }

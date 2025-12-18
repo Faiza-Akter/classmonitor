@@ -121,6 +121,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/quizzes/{quiz}/play', [QuizController::class, 'studentPlay'])->name('quizzes.play');
         Route::post('/quizzes/{quiz}/submit', [QuizController::class, 'studentSubmit'])->name('quizzes.submit');
         Route::get('/quizzes/{quiz}/result', [QuizController::class, 'studentResult'])->name('quizzes.result');
+        Route::get('/student/quizzes', [QuizController::class, 'studentHistory'])
+            ->name('student.quizzes.history');
+
+        Route::get('/student/quizzes/{attempt}', [QuizController::class, 'studentAttemptShow'])
+            ->name('student.quizzes.show');
+
     });
 
 });
