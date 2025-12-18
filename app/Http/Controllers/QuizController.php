@@ -555,7 +555,7 @@ class QuizController extends Controller
                 return $a;
             });
 
-        return view('student.quizzes.history', compact('attempts'));
+        return view('quizzes.history', compact('attempts'));
     }
 
     public function studentAttemptShow(Request $request, QuizAttempt $attempt)
@@ -580,7 +580,54 @@ class QuizController extends Controller
             }
         }
 
-        return view('student.quizzes.show', compact('attempt', 'maxScore', 'correctByQuestion'));
+        return view('quizzes.show', compact('attempt', 'maxScore', 'correctByQuestion'));
+
     }
+
+    public function teacherResults(Request $request, Quiz $quiz)
+    {
+        abort_unless($quiz->teacher_id === $request->user()->id, 403);
+
+        $quiz->load('questions');
+
+        $maxScore = (int) $quiz->questions->sum('points');
+
+        $attempts = QuizAttempt::query()
+            ->where('quiz_id', $quiz->id)
+            ->whereNotNull('submitted_at')
+            ->with('student:id,name,email')
+            ->orderByDesc('score')
+            ->orderBy('submitted_at')
+            ->paginate(20);
+
+        $totalSubmissions = QuizAttempt::query()
+            ->where('quiz_id', $quiz->id)
+            ->whereNotNull('submitted_at')
+            ->count();
+
+        $avgScore = QuizAttempt::query()
+            ->where('quiz_id', $quiz->id)
+            ->whereNotNull('submitted_at')
+            ->avg('score');
+
+        $avgScore = $avgScore !== null ? round((float) $avgScore, 1) : null;
+
+        $topScore = QuizAttempt::query()
+            ->where('quiz_id', $quiz->id)
+            ->whereNotNull('submitted_at')
+            ->max('score');
+
+        $topScore = $topScore !== null ? (int) $topScore : null;
+
+        return view('quizzes.results', compact(
+            'quiz',
+            'attempts',
+            'maxScore',
+            'totalSubmissions',
+            'avgScore',
+            'topScore'
+        ));
+    }
+
 
 }

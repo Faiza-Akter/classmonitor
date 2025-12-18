@@ -19,6 +19,9 @@
     // Attendance variables from controller
     $activeAttendance = $activeAttendance ?? null;
     $liveCheckins     = $liveCheckins ?? 0;
+
+    // Quiz variables from controller
+    $activeQuiz = $activeQuiz ?? null;
 @endphp
 
 <div class="relative min-h-[calc(100vh-88px)] overflow-hidden bg-white text-slate-900">
@@ -56,7 +59,7 @@
                         Attendance
                     </a>
 
-                    <a href="{{ url('/quizzes') }}"
+                    <a href="{{ route('quizzes.index') }}"
                        class="inline-flex items-center gap-2 px-4 py-2 rounded-xl font-semibold border border-slate-200 bg-white
                               shadow-sm hover:shadow-md transition">
                         <span class="inline-block w-2.5 h-2.5 rounded-full" style="background:{{ $cmYellow }};"></span>
@@ -94,7 +97,7 @@
                             <p class="mt-1 text-3xl font-extrabold text-slate-900">
                                 {{ $avgScore === null ? '—' : number_format($avgScore, 1) }}
                             </p>
-                            <p class="mt-2 text-xs text-slate-500">Recent attempts</p>
+                            <p class="mt-2 text-xs text-slate-500">Submitted attempts</p>
                         </div>
                         <div class="w-11 h-11 rounded-2xl grid place-items-center" style="background:rgba(36,99,235,.14);">
                             <span class="w-2.5 h-2.5 rounded-full" style="background:{{ $cmBlue }};"></span>
@@ -107,7 +110,7 @@
                         <div>
                             <p class="text-sm font-semibold text-slate-600">Pending Reviews</p>
                             <p class="mt-1 text-3xl font-extrabold text-slate-900">{{ $pendingReviews }}</p>
-                            <p class="mt-2 text-xs text-slate-500">Manual grading</p>
+                            <p class="mt-2 text-xs text-slate-500">Short answers</p>
                         </div>
                         <div class="w-11 h-11 rounded-2xl grid place-items-center" style="background:rgba(237,183,10,.16);">
                             <span class="w-2.5 h-2.5 rounded-full" style="background:{{ $cmYellow }};"></span>
@@ -121,14 +124,12 @@
                     <p class="mt-2 text-xs text-slate-500">Attendance + quiz summaries</p>
 
                     <div class="mt-4 flex flex-wrap gap-2">
-                        {{-- ✅ REAL ROUTE: CSV download --}}
                         <a href="{{ route('attendance.export.csv') }}"
                            class="px-3 py-2 rounded-xl font-semibold text-white shadow-sm hover:shadow-md transition"
                            style="background:{{ $cmBlue }};">
                             Export CSV
                         </a>
 
-                        {{-- ✅ History = open attendance page (it already shows recent sessions) --}}
                         <a href="{{ route('attendance.index') }}"
                            class="px-3 py-2 rounded-xl font-semibold border border-slate-200 bg-white
                                   text-slate-900 shadow-sm hover:shadow-md transition">
@@ -150,7 +151,6 @@
                         </div>
 
                         <div class="flex flex-wrap gap-2">
-                            {{-- ✅ REAL BACKEND: create session --}}
                             <form method="POST" action="{{ route('attendance.sessions.create') }}">
                                 @csrf
                                 <input type="hidden" name="expires_minutes" value="10">
@@ -161,7 +161,6 @@
                                 </button>
                             </form>
 
-                            {{-- ✅ REAL ROUTE --}}
                             <a href="{{ route('attendance.index') }}"
                                class="px-4 py-2 rounded-xl font-semibold border border-slate-200 bg-white
                                       text-slate-900 shadow-sm hover:shadow-md transition">
@@ -209,13 +208,11 @@
                         @if($activeAttendance)
                             <div class="mt-4">
                                 <div class="flex flex-wrap gap-2">
-                                    {{-- ✅ REAL ROUTE --}}
                                     <a href="{{ route('attendance.index') }}"
                                        class="px-4 py-2 rounded-xl font-semibold border border-slate-200 bg-white text-slate-900 shadow-sm hover:shadow-md transition">
                                         View Sessions
                                     </a>
 
-                                    {{-- ✅ REAL BACKEND: end session --}}
                                     <form method="POST" action="{{ route('attendance.sessions.end', $activeAttendance) }}">
                                         @csrf
                                         <button type="submit"
@@ -248,26 +245,71 @@
                         </p>
 
                         <div class="mt-4 flex flex-wrap gap-2">
-                            <a href="{{ url('/quizzes') }}"
+                            <a href="{{ route('quizzes.index') }}"
                                class="px-4 py-2 rounded-xl font-semibold text-white shadow-sm hover:shadow-md transition"
                                style="background:{{ $cmBlue }};">
                                 Open
                             </a>
 
-                            {{-- Placeholder until quiz results route exists --}}
-                            <button type="button"
-                                    class="px-4 py-2 rounded-xl font-semibold border border-slate-200 bg-white
-                                           text-slate-900 shadow-sm hover:shadow-md transition"
-                                    onclick="alert('Quiz results will be added in the next step (Quiz backend).')">
-                                Results
-                            </button>
+                            @if($activeQuiz)
+                                <a href="{{ route('quizzes.results', $activeQuiz) }}"
+                                   class="px-4 py-2 rounded-xl font-semibold border border-slate-200 bg-white
+                                          text-slate-900 shadow-sm hover:shadow-md transition">
+                                    Results
+                                </a>
+                            @else
+                                <button type="button"
+                                        class="px-4 py-2 rounded-xl font-semibold border border-slate-200 bg-white
+                                               text-slate-400 cursor-not-allowed"
+                                        disabled>
+                                    Results
+                                </button>
+                            @endif
                         </div>
                     </div>
 
+                    {{-- Performance Snapshot (REAL data, no placeholder) --}}
                     <div class="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
                         <p class="text-sm font-bold text-slate-900">Performance Snapshot</p>
-                        <div class="mt-3 h-24 rounded-xl border border-dashed border-slate-300 grid place-items-center">
-                            <span class="text-xs text-slate-500">Chart placeholder</span>
+
+                        <div class="mt-3 grid grid-cols-3 gap-3">
+                            <div class="rounded-xl border border-slate-200 bg-white p-3">
+                                <p class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Avg Score</p>
+                                <p class="mt-1 text-lg font-extrabold text-slate-900">
+                                    {{ $avgScore === null ? '—' : number_format($avgScore, 1) }}
+                                </p>
+                            </div>
+
+                            <div class="rounded-xl border border-slate-200 bg-white p-3">
+                                <p class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Pending</p>
+                                <p class="mt-1 text-lg font-extrabold text-slate-900">{{ $pendingReviews }}</p>
+                            </div>
+
+                            <div class="rounded-xl border border-slate-200 bg-white p-3">
+                                <p class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Today</p>
+                                <p class="mt-1 text-lg font-extrabold text-slate-900">{{ $todayCheckins }}</p>
+                            </div>
+                        </div>
+
+                        <div class="mt-3 flex flex-wrap gap-2">
+                            <a href="{{ route('quizzes.grading.index', $activeQuiz ?? 0) }}"
+                               class="px-4 py-2 rounded-xl font-semibold border border-slate-200 bg-white text-slate-900 shadow-sm hover:shadow-md transition
+                               {{ $activeQuiz ? '' : 'pointer-events-none opacity-50' }}">
+                                Manual Grading
+                            </a>
+
+                            @if($activeQuiz)
+                                <a href="{{ route('quizzes.leaderboard', $activeQuiz) }}"
+                                   class="px-4 py-2 rounded-xl font-semibold border border-slate-200 bg-white text-slate-900 shadow-sm hover:shadow-md transition">
+                                    Leaderboard
+                                </a>
+                            @else
+                                <button type="button"
+                                        class="px-4 py-2 rounded-xl font-semibold border border-slate-200 bg-white text-slate-400 cursor-not-allowed"
+                                        disabled>
+                                    Leaderboard
+                                </button>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -278,7 +320,7 @@
     </div>
 </div>
 
-{{-- ✅ Optional: live polling for dashboard count --}}
+{{-- Optional: live polling for dashboard count --}}
 @if($activeAttendance)
 <script>
     const liveUrl = @json(route('attendance.sessions.live', $activeAttendance));

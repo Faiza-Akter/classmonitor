@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\AttendanceSession;
 use App\Models\AttendanceRecord;
+use App\Models\Quiz;
+use App\Models\QuizAttempt;
+use App\Models\QuizAnswer;
 use Illuminate\Http\Request;
 
 class TeacherDashboardController extends Controller
@@ -12,6 +15,9 @@ class TeacherDashboardController extends Controller
     {
         $user = $request->user();
 
+        // -----------------------------
+        // Attendance (existing)
+        // -----------------------------
         $activeAttendance = AttendanceSession::where('teacher_id', $user->id)
             ->active()
             ->latest('id')
@@ -31,9 +37,37 @@ class TeacherDashboardController extends Controller
             ? $activeAttendance->records()->count()
             : 0;
 
-        // keep as placeholders until quiz system is built
-        $avgScore = null;
-        $pendingReviews = 0;
+        // -----------------------------
+        // Quizzes (REAL values)
+        // -----------------------------
+
+        // Active quiz (to show in dashboard + use for Results button)
+        $activeQuiz = Quiz::query()
+            ->where('teacher_id', $user->id)
+            ->where('status', 'active')
+            ->latest('id')
+            ->first();
+
+        // Avg quiz score across all submitted attempts of this teacher's quizzes
+        $avgScore = QuizAttempt::query()
+            ->whereHas('quiz', function ($q) use ($user) {
+                $q->where('teacher_id', $user->id);
+            })
+            ->whereNotNull('submitted_at')
+            ->avg('score');
+
+        $avgScore = $avgScore !== null ? round((float) $avgScore, 1) : null;
+
+        // Pending reviews = short answers not graded yet (is_correct null)
+        $pendingReviews = QuizAnswer::query()
+            ->whereNull('is_correct')
+            ->whereHas('question', function ($q) {
+                $q->where('type', 'short');
+            })
+            ->whereHas('attempt.quiz', function ($q) use ($user) {
+                $q->where('teacher_id', $user->id);
+            })
+            ->count();
 
         return view('dashboard.teacher', compact(
             'activeAttendance',
@@ -41,7 +75,8 @@ class TeacherDashboardController extends Controller
             'todayCheckins',
             'liveCheckins',
             'avgScore',
-            'pendingReviews'
+            'pendingReviews',
+            'activeQuiz'
         ));
     }
 }

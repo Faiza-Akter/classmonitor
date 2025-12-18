@@ -93,6 +93,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::patch('/quizzes/{quiz}/questions/{question}', [QuizController::class, 'teacherUpdateQuestion'])
             ->name('quizzes.questions.update');
+            
+        // Teacher Quiz Results (submissions + stats)
+        Route::get('/quizzes/{quiz}/results', [QuizController::class, 'teacherResults'])
+            ->name('quizzes.results');
+
 
         //delete question
         Route::delete('/quizzes/{quiz}/questions/{question}', [QuizController::class, 'teacherDeleteQuestion'])
