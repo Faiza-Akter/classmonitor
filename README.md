@@ -1,59 +1,217 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+📘 ClassMonitor
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Smart Attendance & Quiz Management System
 
-## About Laravel
+ClassMonitor is a modern Laravel-based classroom management system designed to help teachers manage attendance sessions, quizzes, and student performance efficiently, while giving students a simple and clean experience to participate and track their progress.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+🚀 Features Overview
+👩‍🏫 Teacher Features
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+✅ Role-based teacher dashboard
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+✅ Create attendance sessions with auto-expiry
 
-## Learning Laravel
+✅ Live attendance tracking
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+✅ QR code–based attendance joining
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+✅ Attendance session history
 
-## Laravel Sponsors
+✅ Export attendance data as CSV
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+✅ Create quizzes (MCQ, True/False, Short Answer)
 
-### Premium Partners
+✅ Edit & delete quiz questions
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+✅ Start / stop quizzes
 
-## Contributing
+✅ Auto-scoring for MCQs
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+✅ Manual grading for short-answer questions
 
-## Code of Conduct
+✅ Quiz leaderboard (ranked by score)
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+✅ Quiz performance snapshot on dashboard
 
-## Security Vulnerabilities
+🎓 Student Features
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+✅ Student dashboard
 
-## License
+✅ Join attendance using session code
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+✅ View attendance history
+
+✅ Play quizzes with timer countdown
+
+✅ Auto-submit quiz when time ends
+
+✅ View quiz results (correct vs wrong answers)
+
+✅ Quiz history with scores
+
+🧠 Tech Stack
+Layer	Technology
+Backend	Laravel 12
+Frontend	Blade + Tailwind CSS
+Database	MySQL
+Authentication	Laravel Breeze
+Authorization	Role-based middleware
+CSV Export	Native PHP streams
+Charts / UI	Tailwind + Blade components
+📂 Project Structure (Key Files)
+app/
+ ├── Http/
+ │   ├── Controllers/
+ │   │   ├── TeacherDashboardController.php
+ │   │   ├── AttendanceController.php
+ │   │   ├── QuizController.php
+ │   └── Middleware/
+ │       ├── EnsureTeacher.php
+ │       └── EnsureStudent.php
+
+resources/
+ ├── views/
+ │   ├── dashboard/
+ │   │   ├── teacher.blade.php
+ │   │   └── student.blade.php
+ │   ├── attendance/
+ │   ├── quizzes/
+ │   └── student/
+
+routes/
+ └── web.php
+
+🔐 Role System
+Role	Access
+Teacher	Dashboard, Attendance, Quiz creation & grading
+Student	Attendance join, Quiz play, History
+
+Middleware used:
+
+teacher
+
+student
+
+🧾 Attendance Flow
+
+Teacher creates an attendance session
+
+System generates a unique session code
+
+Students join using code or QR
+
+Live check-ins update automatically
+
+Teacher can end session anytime
+
+Attendance history stored permanently
+
+CSV export available
+
+📝 Quiz Flow
+Teacher
+
+Create quiz
+
+Add questions & options
+
+Start quiz
+
+View live leaderboard
+
+Stop quiz
+
+Manually grade short answers (optional)
+
+Student
+
+Open active quiz
+
+Timer starts automatically
+
+Submit answers or auto-submit on timeout
+
+View result breakdown
+
+Access quiz history
+
+📊 Leaderboard Logic
+
+Sorted by highest score
+
+Tie-breaker: earlier submission
+
+Top results shown on dashboard
+
+Full leaderboard available per quiz
+
+🕒 Timer System
+
+Quiz duration (minutes) set by teacher
+
+Countdown visible to students
+
+Auto-submit when timer reaches zero
+
+Server-side validation ensures fairness
+
+📦 Installation Guide
+1️⃣ Clone the Repository
+git clone https://github.com/your-username/classmonitor.git
+cd classmonitor
+
+2️⃣ Install Dependencies
+composer install
+npm install && npm run build
+
+3️⃣ Environment Setup
+cp .env.example .env
+php artisan key:generate
+
+
+Update .env database credentials:
+
+DB_DATABASE=classmonitor
+DB_USERNAME=root
+DB_PASSWORD=
+
+4️⃣ Run Migrations
+php artisan migrate
+
+5️⃣ Start Server
+php artisan serve
+
+
+Visit:
+👉 http://127.0.0.1:8000
+
+🧪 Test Accounts (Example)
+Role	Email	Password
+Teacher	teacher@test.com
+	password
+Student	student@test.com
+	password
+📤 Export Features
+
+Attendance CSV export
+
+Includes session code, time, and check-in count
+
+Excel-compatible
+
+🔮 Future Improvements
+
+Live quiz answer monitoring
+
+Graph-based analytics
+
+Student performance trends
+
+Notifications
+
+Mobile-friendly PWA
+
+👩‍💻 Developer
+
+Faiza Akter Borsha
+Laravel Project – ClassMonitor
