@@ -31,7 +31,7 @@
         $scoreProg = $avgScore === null ? 0 : max(0, min(100, ($avgScore / 10) * 100));
     @endphp
 
-    <div class="min-h-[calc(100vh-88px)] bg-white text-slate-900">
+    <div class="min-h-[calc(100vh-88px)] text-slate-900" style="background:#2463EB;">
         {{-- Top accent strip --}}
         <div class="h-[6px] w-full"
             style="background: linear-gradient(90deg, {{ $cmBlue }}, {{ $cmGreen }}, {{ $cmYellow }});"></div>
@@ -224,7 +224,7 @@
                         </div>
                     </div>
 
-                    {{-- ✅ make body stretch --}}
+                    {{-- make body stretch --}}
                     <div class="cm-panel-body flex-1">
                         <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
 
@@ -526,7 +526,7 @@
                     color: #fff;
                 }
 
-                /* ✅ KPI height reduced */
+                /* KPI height reduced */
                 .cm-kpi {
                     border: 1px solid rgba(226, 232, 240, 1);
                     border-radius: 1.25rem;
