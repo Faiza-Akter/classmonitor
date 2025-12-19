@@ -99,7 +99,7 @@
 
   @if(isset($remainingSeconds) && $remainingSeconds !== null)
     <script>
-      let remaining = Number(@json($remainingSeconds));
+      let remaining = Math.max(0, parseInt(@json($remainingSeconds), 10) || 0);
       let submitted = false;
 
       function fmt(sec) {
