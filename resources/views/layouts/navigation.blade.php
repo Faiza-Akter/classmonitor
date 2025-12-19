@@ -24,32 +24,46 @@
             || request()->routeIs('student.dashboard')
             || request()->routeIs('dashboard');
 
+        /**
+         * ✅ FIX 1: Student Attendance tab should be active ONLY on join pages
+         *          (NOT on student.attendance.* because history is also under it)
+         */
         $isAttendance = $role === 'teacher'
-            ? request()->routeIs('attendance.*') || request()->is('attendance*')
-            : request()->routeIs('attendance.join.*')
-            || request()->routeIs('student.attendance.*')
-            || request()->is('attendance/join')
-            || request()->is('student/attendance*');
+            ? (request()->routeIs('attendance.*') || request()->is('attendance*'))
+            : (
+                request()->routeIs('attendance.join.*')
+                || request()->routeIs('attendance.join.form')
+                || request()->routeIs('attendance.join')
+                || request()->is('attendance/join*')
+            );
 
+        /**
+         * ✅ Student quizzes tab
+         */
         $isQuizzes = $role === 'teacher'
-            ? request()->routeIs('quizzes.*') || request()->is('quizzes*')
-            : request()->routeIs('student.quizzes.*')
-            || request()->is('student/quizzes*')
-            || request()->routeIs('quizzes.play')
-            || request()->routeIs('quizzes.result');
+            ? (request()->routeIs('quizzes.*') || request()->is('quizzes*'))
+            : (
+                request()->routeIs('student.quizzes.*')
+                || request()->is('student/quizzes*')
+                || request()->routeIs('quizzes.play')
+                || request()->routeIs('quizzes.result')
+            );
 
+        /**
+         * ✅ FIX 2: History tab = Attendance History ONLY
+         */
         $isHistory = $role === 'student'
             && (
                 request()->routeIs('student.attendance.history')
-                || request()->routeIs('student.attendance.*')
-                || request()->is('student/attendance*')
-                || request()->routeIs('student.quizzes.history')
-                || request()->routeIs('student.quizzes.show')
+                || request()->is('student/attendance/history*')
             );
 
         $cmLogo = asset('images/cm-logo.png');
 
-        $activeTab = $isAttendance ? 'attendance' : ($isQuizzes ? 'quizzes' : ($isHistory ? 'history' : 'dashboard'));
+        /**
+         * ✅ FIX 3: Give History priority over Attendance
+         */
+        $activeTab = $isHistory ? 'history' : ($isAttendance ? 'attendance' : ($isQuizzes ? 'quizzes' : 'dashboard'));
     @endphp
 
     <div class="sticky top-0 z-50">
@@ -116,14 +130,13 @@
                             <span class="text-xs font-extrabold text-slate-600">Online</span>
                         </div>
 
-                        {{-- ✅ User dropdown (NEW CLEAN DESIGN) --}}
+                        {{-- User dropdown --}}
                         <x-dropdown align="right" width="56">
                             <x-slot name="trigger">
                                 <button class="cm-user inline-flex items-center gap-3 focus:outline-none">
                                     <div class="w-10 h-10 rounded-xl grid place-items-center text-white font-extrabold shadow-sm"
                                         style="background: {{ $cmBlue }};">
                                         {{ strtoupper(substr($user->name ?? 'U', 0, 1)) }}
-
                                     </div>
 
                                     <div class="text-left leading-tight">
@@ -142,8 +155,6 @@
 
                             <x-slot name="content">
                                 <div class="cm-dd2">
-
-                                    {{-- Compact header (matches navbar style) --}}
                                     <div class="cm-dd2-head">
                                         <div class="cm-dd2-badge">
                                             <span class="cm-dd2-dot" style="background: {{ $cmGreen }};"></span>
@@ -156,7 +167,8 @@
                                             </div>
                                             <div class="min-w-0">
                                                 <div class="text-sm font-extrabold text-slate-900 truncate">
-                                                    {{ $user->email }}</div>
+                                                    {{ $user->email }}
+                                                </div>
                                                 <div class="text-[11px] font-bold text-slate-500">{{ $roleLabel }}</div>
                                             </div>
                                         </div>
@@ -164,7 +176,6 @@
 
                                     <div class="cm-dd2-divider"></div>
 
-                                    {{-- Menu --}}
                                     <div class="cm-dd2-menu">
                                         <x-dropdown-link :href="route('profile.edit')" class="cm-dd2-item">
                                             <span class="cm-dd2-ico"

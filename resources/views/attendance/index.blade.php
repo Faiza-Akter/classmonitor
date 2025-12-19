@@ -8,12 +8,7 @@
     $cmRed = '#EF4444';
 @endphp
 
-<div class="min-h-[calc(100vh-88px)] text-white" style="
-    background:
-      radial-gradient(900px 500px at 20% 8%, rgba(255,255,255,.18) 0%, rgba(255,255,255,0) 60%),
-      radial-gradient(700px 420px at 85% 30%, rgba(139,222,99,.18) 0%, rgba(255,255,255,0) 65%),
-      linear-gradient(135deg, rgba(36,99,235,.96) 0%, rgba(36,99,235,.92) 55%, rgba(29,78,216,.96) 100%);
-">
+<div class="min-h-[calc(100vh-88px)] text-white"style="background:#2463EB;">
 
     {{-- ✅ ADD: Bottom border/strip under navbar (like Quizzes page) --}}
     <div class="h-[6px] w-full"
@@ -24,7 +19,7 @@
         {{-- Header --}}
         <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
             <div>
-                <h1 class="mt-1 text-3xl sm:text-4xl font-extrabold text-white">Attendance Sessions? Sessions</h1>
+                <h1 class="mt-1 text-3xl sm:text-4xl font-extrabold text-white">Attendance Sessions</h1>
                 <p class="mt-1 text-sm text-white/80">
                     Create a session code, students join, you monitor live.
                 </p>

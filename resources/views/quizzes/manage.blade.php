@@ -2,10 +2,10 @@
 
 @section('content')
 @php
-  $cmBlue='#2463EB'; $cmGreen='#8BDE63'; $cmYellow='#EDB70A';
+  $cmBlue='#2463EB'; $cmGreen='#8BDE63'; $cmYellow='#EDB70A'; $cmRed = '#EF4444';
 @endphp
 
-<div class="min-h-[calc(100vh-88px)] text-slate-900"
+<div class="min-h-[calc(100vh-88px)] text-slate-900"  style="background:#2463EB;"
      style="background: linear-gradient(135deg, rgba(36,99,235,.08) 0%, #ffffff 55%, rgba(139,222,99,.10) 100%);">
 
     {{-- Top accent strip --}}
@@ -15,18 +15,17 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
 
         {{-- Header --}}
-        <section class="cm-animate-in rounded-3xl overflow-hidden shadow-[0_18px_45px_rgba(15,23,42,0.12)]"
-                 style="background: linear-gradient(110deg, rgba(157,183,255,.9) 0%, rgba(189,240,178,.9) 48%, rgba(255,224,138,.9) 100%);">
+    
             {{-- ✅ reduce header height: p-5 sm:p-7 -> p-4 sm:p-5 --}}
             <div class="p-4 sm:p-5">
                 <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                     <div class="min-w-0">
-                        <p class="text-xs font-extrabold tracking-widest uppercase text-slate-800">Quiz</p>
+                        <p class="text-xs font-extrabold tracking-widest uppercase text-white text-slate-800">Quiz</p>
                         {{-- ✅ slightly tighter spacing --}}
-                        <h1 class="mt-1 text-2xl sm:text-3xl font-extrabold text-slate-900 truncate">
+                        <h1 class="mt-1 text-2xl  text-white sm:text-3xl font-extrabold text-slate-900 truncate">
                             {{ $quiz->title }}
                         </h1>
-                        <p class="mt-1 text-sm sm:text-base text-slate-800">
+                        <p class="mt-1 text-sm sm:text-base text-white text-slate-800">
                             Add MCQ questions + options. Short-answer supported (manual grading).
                         </p>
                     </div>
@@ -41,8 +40,8 @@
                         </a>
 
                         <a href="{{ route('quizzes.leaderboard', $quiz) }}"
-                           class="cm-btn-head-solid"
-                           style="--btn: {{ $cmBlue }}; --btn-text:#FFFFFF;">
+                           class="cm-btn-head-outline"
+                           style="--btn: {{ $cmBlue }}; --btn-text:#2463EB;">
                             Leaderboard
                         </a>
 
@@ -55,16 +54,16 @@
                         @if($quiz->status !== 'active')
                             <form method="POST" action="{{ route('quizzes.start', $quiz) }}">
                                 @csrf
-                                <button class="cm-btn-head-solid"
-                                        style="--btn: {{ $cmGreen }}; --btn-text:#FFFFFF;">
+                                <button class="cm-btn-head-outline"
+                                        style="--btn: {{ $cmGreen }}; --btn-text:#8BDE63;">
                                     Start Quiz
                                 </button>
                             </form>
                         @else
                             <form method="POST" action="{{ route('quizzes.stop', $quiz) }}">
                                 @csrf
-                                <button class="cm-btn-head-solid"
-                                        style="--btn: {{ $cmRed }}; --btn-text:#FFFFFF;">
+                                <button class="cm-btn-head-outline"
+                                        style="--btn: {{ $cmRed }}; --btn-text:#EF4444;">
                                     Stop Quiz
                                 </button>
                             </form>
@@ -72,7 +71,7 @@
                     </div>
                 </div>
             </div>
-        </section>
+        
 
         {{-- Alerts --}}
         @if(session('success'))
