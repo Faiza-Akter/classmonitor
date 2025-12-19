@@ -8,7 +8,7 @@
         $cmRed = '#EF4444';
     @endphp
 
-    <div class="min-h-[calc(100vh-88px)] text-slate-900"
+    <div class="min-h-[calc(100vh-88px)] text-slate-900" 
         style="background: linear-gradient(135deg, rgba(36,99,235,.10) 0%, #ffffff 55%, rgba(139,222,99,.10) 100%);">
 
         {{-- Top accent strip --}}
@@ -27,7 +27,7 @@
                 #FFE08A 100%
             );
         ">
-                <div class="p-8 sm:p-10">
+                <div class="p-4 sm:p-6">
                     <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
                         <div>
                             <p class="text-xs font-bold tracking-widest uppercase text-slate-800">
